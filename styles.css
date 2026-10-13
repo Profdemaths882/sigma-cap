@@ -332,7 +332,7 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 /* Moyens de paiement (onglets) */
 .paytabs { margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
 .pt-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.pt-head button { border: 0; padding: 12px 6px; font: 800 .95rem/1.2 var(--display); cursor: pointer; background: var(--surface-2); color: var(--muted); border-bottom: 3px solid transparent; }
+.pt-head button { display: grid; justify-items: center; gap: 6px; border: 0; padding: 10px 6px; font: 800 .95rem/1.2 var(--display); cursor: pointer; background: var(--surface-2); color: var(--muted); border-bottom: 3px solid transparent; }
 .pt-head button[aria-selected="true"] { background: var(--surface); color: var(--ink); }
 .pt-head .pt-wave[aria-selected="true"] { border-bottom-color: #1dc4ff; color: #0a8fc2; }
 .pt-head .pt-om[aria-selected="true"] { border-bottom-color: #ff7900; color: #d45f00; }
@@ -340,3 +340,8 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .pt-body { padding: 14px 16px; border-left: 4px solid var(--line); }
 .pt-body p { margin: 0; }
 .pt-body.pt-wave { border-left-color: #1dc4ff; } .pt-body.pt-om { border-left-color: #ff7900; } .pt-body.pt-cash { border-left-color: var(--ok); }
+
+.pt-head img { height: 34px; width: auto; max-width: 90%; object-fit: contain; }
+.pt-head button[aria-selected="false"] img { opacity: .55; filter: grayscale(.4); }
+.pt-body { display: flex; gap: 14px; align-items: center; }
+.pt-logo { height: 54px; width: auto; max-width: 90px; object-fit: contain; flex: none; background: #fff; border-radius: 8px; padding: 4px; }

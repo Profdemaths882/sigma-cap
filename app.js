@@ -332,13 +332,14 @@
     const tel = (S.settings.contacts[0] && S.settings.contacts[0].tel) || '';
     const qui = (S.settings.contacts || []).map(c => c.nom).join(' ou ');
     const k = S.payTab || 'wave';
+    const LOGO = { wave: 'img/pay/wave.png', om: 'img/pay/orange-money.png', cash: 'img/pay/especes.svg' };
     const T = {
       wave: ['Wave', `Envoie le montant avec <b>Wave</b> au <b class="num">${esc(tel)}</b> (${esc((S.settings.contacts[0] || {}).nom || '')}). Garde le SMS : tu indiqueras sa <b>référence</b> en déclarant le paiement.`],
       om: ['Orange Money', `Envoie le montant avec <b>Orange Money</b> au <b class="num">${esc(tel)}</b> (${esc((S.settings.contacts[0] || {}).nom || '')}). Garde le SMS : tu indiqueras sa <b>référence</b> en déclarant le paiement.`],
       cash: ['Espèces', `Remets le montant en <b>espèces</b> à ${esc(qui)}. Demande ton reçu, puis déclare le paiement en choisissant « Espèces ».`]
     };
-    return `<div class="paytabs"><div class="pt-head" role="tablist" aria-label="Moyen de paiement">${Object.entries(T).map(([key, [lab]]) => `<button type="button" role="tab" class="pt-${key}" data-act="paytab" data-v="${key}" aria-selected="${k === key}">${lab}</button>`).join('')}</div>
-      <div class="pt-body pt-${k}" role="tabpanel"><p>${T[k][1]}</p></div></div>`;
+    return `<div class="paytabs"><div class="pt-head" role="tablist" aria-label="Moyen de paiement">${Object.entries(T).map(([key, [lab]]) => `<button type="button" role="tab" class="pt-${key}" data-act="paytab" data-v="${key}" aria-selected="${k === key}"><img src="${LOGO[key]}" alt=""><span>${lab}</span></button>`).join('')}</div>
+      <div class="pt-body pt-${k}" role="tabpanel"><img class="pt-logo" src="${LOGO[k]}" alt="${T[k][0]}"><p>${T[k][1]}</p></div></div>`;
   }
   function renderPublic() {
     const st = S.settings;
