@@ -66,6 +66,7 @@ var SigmaCore = (function () {
      Mois suivants : inscrit jusqu'au 20 → mois entier ; après le 20 → on commence le mois suivant.
      Chaque mois se paie au plus tard le 5 du mois suivant (réglage « jourLimite » de l'appli). */
   function nextMonth(m) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) + 1; if (mo > 12) { mo = 1; y++; } return y + '-' + ('0' + mo).slice(-2); }
+  function prevMonth(m) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1; if (mo < 1) { mo = 12; y--; } return y + '-' + ('0' + mo).slice(-2); }
   function planInscription(dateIso, cfg) {
     cfg = cfg || {}; var m = mk(dateIso), debut = mk(cfg.debut || dateIso), day = +String(dateIso).slice(8, 10) || 1;
     var jm = +(cfg.jourMoitie || 15), jr = +(cfg.jourReport || 20);
@@ -437,7 +438,7 @@ var SigmaCore = (function () {
     };
   }
 
-  return { make: make, planInscription: planInscription, dueFor: dueFor, nextMonth: nextMonth, vacPrix: vacPrix, onVacList: onVacList, pubSettings: pubSettings, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
+  return { make: make, planInscription: planInscription, dueFor: dueFor, nextMonth: nextMonth, prevMonth: prevMonth, vacPrix: vacPrix, onVacList: onVacList, pubSettings: pubSettings, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
     isActive: isActive, payOk: payOk, partsOf: partsOf, MATIERES: MATIERES, CATS: CATS, mk: mk, asList: asList, digits: digits };
 })();
 if (typeof module !== 'undefined') module.exports = SigmaCore;

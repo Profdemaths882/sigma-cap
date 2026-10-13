@@ -282,12 +282,13 @@
     if (!isActive(st)) return [];
     const from = maxMonth(st.moisDebut || startMonth(), startMonth());
     const fin = S.settings.finMois || '2027-07';
-    return monthsRange(from, curMonth() < fin ? curMonth() : fin);
+    const last = C.prevMonth(curMonth()); // le mois en cours n'est pas encore dû : il se paie à la fin du mois
+    return monthsRange(from, last < fin ? last : fin);
   }
   function balance(st, pays) {
     const months = dueMonths(st); const inscDu = st.statut === 'abandon' ? 0 : st.tarif;
-    const du = months.reduce((x, m) => x + dueFor(st, m), 0) + inscDu;
-    const paye = paysOf(st.id, pays).filter(payOk).reduce((s, p) => s + p.montant, 0);
+    const du = months.reduce((x, m) => x + dueFor(st, m), 0);
+    const paye = paysOf(st.id, pays).filter(p => payOk(p) && !isInsc(p)).reduce((s, p) => s + p.montant, 0);
     const t = today();
     return { du, paye, reste: Math.max(0, du - paye), inscReste: Math.max(0, inscDu - inscPaid(st.id, pays)),
       late: months.filter(m => t > deadline(st, m) && paidFor(st.id, m, pays) + pendingFor(st.id, m, pays) < dueFor(st, m)) };
@@ -296,7 +297,7 @@
     const p = paidFor(st.id, mois, pays), q = pendingFor(st.id, mois, pays), d = dueFor(st, mois);
     if (p >= d && d > 0) return ['Payé', 'ok', p];
     if (q > 0) return ['En validation', 'warn', p];
-    if (mois > curMonth()) return ['À venir', 'neutral', p];
+    if (mois >= curMonth()) return [p > 0 ? 'Partiel · à venir' : 'À venir', 'neutral', p]; // mois pas encore terminé
     const lim = deadline(st, mois);
     if (today() > lim) return [p > 0 ? 'Partiel · en retard' : 'En retard', 'bad', p];
     return [(p > 0 ? 'Partiel · ' : '') + 'À payer avant le ' + dateLabel(lim), 'warn', p];
@@ -642,9 +643,9 @@
     const avisHTML = avisOf(me).slice().reverse().slice(0, 3).map(a => `<div class="panel callout ${a.type === 'avertissement' ? 'bad' : 'warn'}"><h3>${a.type === 'avertissement' ? '⚠ Avertissement' : '🔔 Rappel'} de Sigma Cap <span class="small muted" style="font-weight:500">· ${esc(dateLabel(a.date))}</span></h3><p>${esc(a.texte).replace(/\n/g, '<br>')}</p></div>`).join('');
     let alertes = '';
     if (isActive(me)) {
-      const cm = curMonth();
+      const cm = curMonth(), pm = C.prevMonth(cm);
       if (bal.late.length) alertes += `<div class="panel callout bad"><h3>⚠ Retard de paiement</h3><p>${bal.late.map(m => `La mensualité de <b>${monthLabel(m)}</b> devait être payée au plus tard le <b>${dateLabel(deadline(me, m))}</b>.`).join('<br>')}</p><p>Reste à payer : <b>${fcfaLong(bal.reste)}</b>. Règle au plus vite, puis déclare ton paiement.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
-      else if (months.includes(cm) && paidFor(me.id, cm) + pendingFor(me.id, cm) < dueFor(me, cm)) alertes += `<div class="panel callout"><h3>Mensualité de ${monthLabel(cm)}</h3><p>À payer à la fin du mois, au plus tard le <b>${dateLabel(deadline(me, cm))}</b> : ${fcfaLong(dueFor(me, cm) - paidFor(me.id, cm))}${me.moitie === 'oui' && cm === me.moisDebut ? ' (moitié du mois)' : ''}.</p><div><button class="btn sm primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+      else if (months.includes(pm) && today() <= deadline(me, pm) && paidFor(me.id, pm) + pendingFor(me.id, pm) < dueFor(me, pm)) alertes += `<div class="panel callout"><h3>Mensualité de ${monthLabel(pm)}</h3><p>Le mois est terminé : à payer au plus tard le <b>${dateLabel(deadline(me, pm))}</b> : ${fcfaLong(dueFor(me, pm) - paidFor(me.id, pm))}${me.moitie === 'oui' && pm === me.moisDebut ? ' (moitié du mois)' : ''}.</p><div><button class="btn sm primary" data-act="declare">Déclarer un paiement</button></div></div>`;
       if (bal.inscReste > 0 && !inscPending(me.id)) alertes += `<div class="panel callout warn"><h3>Frais d'inscription</h3><p>Il reste <b>${fcfaLong(bal.inscReste)}</b> à régler pour tes frais d'inscription.</p></div>`;
     }
     let action = '';
@@ -659,7 +660,7 @@
         <div class="kpis">
           <div class="kpi"><span class="l">Classe</span><span class="v" style="font-size:1.3rem">${esc(me.classe)}</span><span class="s">${esc(formule(me.classe, me.matieres, st.tarifs))}</span></div>
           <div class="kpi"><span class="l">Mensualité</span><span class="v">${fcfa(me.tarif)}</span><span class="s">par mois</span></div>
-          <div class="kpi ${bal.reste ? 'alert' : ''}"><span class="l">Reste à payer à ce jour</span><span class="v">${fcfa(bal.reste)}</span><span class="s">${bal.late.length ? bal.late.length + ' mois en retard' : 'À jour'}</span></div>
+          <div class="kpi ${bal.reste ? 'alert' : ''}"><span class="l">Reste à payer à ce jour</span><span class="v">${fcfa(bal.reste)}</span><span class="s">${bal.late.length ? bal.late.length + ' mois en retard' : 'À jour'}${bal.inscReste ? ' · frais d\'inscription : ' + fcfa(bal.inscReste) : ''}</span></div>
           <div class="kpi"><span class="l">Statut</span><span class="v" style="font-size:1.1rem"><span class="pill ${sc}">${sl}</span></span><span class="s">N° ${esc(me.num)}</span></div>
         </div>
         ${avisHTML}${alertes}${action}
@@ -977,7 +978,7 @@
       </form>
       ${isNew ? '<p class="infobox small">Après « Inscrire », la fenêtre d\'encaissement s\'ouvre pour les frais d\'inscription (même montant que la mensualité) : le premier paiement validé crée le code de confirmation.</p>' : codeBox(s)}
       ${isNew ? '' : `<div class="panel" style="padding:12px"><h3 style="font-size:1rem">Paiements</h3>
-        <p class="small muted">Dû à ce jour (inscription comprise) ${fcfa(b.du)} · validé ${fcfa(b.paye)} · <b style="color:${b.reste ? 'var(--bad)' : 'var(--ok)'}">reste ${fcfa(b.reste)}</b>${b.late.length ? ` · <b style="color:var(--bad)">${b.late.length} mois en retard</b>` : ''}${b.inscReste ? ' · inscription non réglée' : ''}</p>
+        <p class="small muted">Mensualités dues (mois terminés) ${fcfa(b.du)} · validé ${fcfa(b.paye)} · <b style="color:${b.reste ? 'var(--bad)' : 'var(--ok)'}">reste ${fcfa(b.reste)}</b>${b.inscReste ? ' · frais d\'inscription restants ' + fcfa(b.inscReste) : ''}${b.late.length ? ` · <b style="color:var(--bad)">${b.late.length} mois en retard</b>` : ''}${b.inscReste ? ' · inscription non réglée' : ''}</p>
         ${hist.length ? `<div class="tbl-wrap"><table><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${payLabel(p)}</td><td>${esc(p.mode)}${p.ref ? ' · ' + esc(p.ref) : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td><td>${!isInsc(p) && b.inscReste ? `<button class="btn sm" data-act="mark-insc" data-id="${esc(p.id)}" title="Ce paiement correspond aux frais d'inscription">→ inscription</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="small muted">Aucun paiement enregistré.</p>'}
       </div>
       ${avisOf(s).length ? `<div class="panel" style="padding:12px"><h3 style="font-size:1rem">Messages affichés dans son espace</h3><div class="tbl-wrap"><table><tbody>${avisOf(s).slice().reverse().map(a => `<tr><td><span class="pill ${a.type === 'avertissement' ? 'bad' : 'warn'}">${a.type === 'avertissement' ? 'Avertissement' : 'Rappel'}</span><span class="sub">${esc(dateLabel(a.date))}${a.par ? ' · ' + esc(a.par) : ''}</span></td><td class="small">${esc(a.texte)}</td><td><button class="btn sm danger" data-act="del-avis" data-id="${esc(s.id)}" data-v="${esc(a.id)}">Retirer</button></td></tr>`).join('')}</tbody></table></div></div>` : ''}`}
