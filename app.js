@@ -486,7 +486,10 @@
     </form></div>`;
     $('#login').addEventListener('submit', async e => {
       e.preventDefault();
-      const login = $('#l-id').value.trim(), password = $('#l-pw').value;
+      let login = $('#l-id').value.trim(); const password = $('#l-pw').value;
+      // N° d'inscription tapé avec espaces, sans tiret ou en minuscules (ex. « sc26 0007 ») → « SC26-0007 »
+      const mNum = login.replace(/[\s\-_.]/g, '').match(/^sc26(\d{1,4})$/i);
+      if (mNum) login = 'SC26-' + mNum[1].padStart(4, '0');
       if (!login || !password) { renderLogin('Saisis ton identifiant et ton mot de passe.'); return; }
       const b = $('#login button[type=submit]'); b.disabled = true; b.textContent = 'Connexion…';
       try {
@@ -755,7 +758,7 @@
         <label class="f">Mensualité (FCFA) <span class="h">calculée selon la grille, modifiable</span><input id="s-tarif" type="number" min="0" step="500" value="${s.tarif || 0}"></label>
         <label class="f">Premier mois facturé<select id="s-mois">${schoolMonths().map(m => `<option value="${m}" ${m === (s.moisDebut || startMonth()) ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</select></label>
         <label class="f">Statut<select id="s-statut">${Object.entries(STATUTS).map(([k, v]) => `<option value="${k}" ${s.statut === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></label>
-        <label class="f">${isNew ? 'Mot de passe de son espace' : 'Nouveau mot de passe'} <span class="h">${isNew ? 'à lui communiquer' : (s.hasPwd ? 'laisser vide pour garder l\'actuel' : 'aucun mot de passe pour l\'instant')}</span><input id="s-pw" autocomplete="new-password" placeholder="${isNew ? 'ex. ses 4 derniers chiffres' : ''}"></label>
+        <label class="f">${isNew ? 'Mot de passe de son espace' : 'Nouveau mot de passe'} <span class="h">${isNew ? 'obligatoire · à lui communiquer' : (s.hasPwd ? 'laisser vide pour garder l\'actuel' : 'aucun mot de passe pour l\'instant')}</span><input id="s-pw" autocomplete="new-password" placeholder="${isNew ? 'ex. ses 4 derniers chiffres' : ''}"></label>
         <label class="f" style="grid-column:1/-1">Notes internes<textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></label>
       </form>
       ${isNew ? '<p class="infobox small">Après « Inscrire », la fenêtre d\'encaissement s\'ouvre : le premier paiement validé crée le code de confirmation.</p>' : codeBox(s)}
@@ -785,6 +788,7 @@
         notesMaths: n(v('#s-nM')), notesPC: n(v('#s-nP')), notesSVT: n(v('#s-nS')), matieres: $$('#s-mats input:checked').map(i => i.value), tarif: +v('#s-tarif') || 0, moisDebut: v('#s-mois'), statut: v('#s-statut'), notes: v('#s-notes') });
       const pw = v('#s-pw'); const er = $('#s-err');
       if (!s.prenom || !s.nom || !s.matieres.length) { er.textContent = 'Indiquez le prénom, le nom et au moins une matière.'; er.hidden = false; return; }
+      if (isNew && !pw) { er.textContent = "Donnez un mot de passe à l'élève : sans mot de passe, il ne peut pas se connecter."; er.hidden = false; return; }
       if (pw && pw.length < 4) { er.textContent = 'Mot de passe : 4 caractères minimum.'; er.hidden = false; return; }
       const item = clone(s); delete item.hasPwd; if (pw) item._pwd = pw;
       item.essais = 0; // enregistrer la fiche débloque la saisie du code
