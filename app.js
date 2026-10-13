@@ -6,7 +6,7 @@
   const CFG = window.SIGMA_CONFIG || {};
   const DEF = window.SIGMA_DEFAULTS;
   const IMG = Object.assign({
-    logo: 'img/logo-full.jpg', mark: 'img/mark.png', thiam: 'img/thiam.jpg', faye: 'img/faye.jpg', sene: 'img/sene.jpg', thiamP: 'img/thiam-p.jpg', fayeP: 'img/faye-p.jpg', pdm: 'img/profdemaths.jpg'
+    logo: 'img/logo-full.jpg', mark: 'img/mark.png', thiam: 'img/thiam.jpg', faye: 'img/faye.jpg', sene: 'img/sene.jpg', seneP: 'img/sene-p.jpg', thiamP: 'img/thiam-p.jpg', fayeP: 'img/faye-p.jpg', pdm: 'img/profdemaths.jpg'
   }, window.SIGMA_IMG || {});
   // Hébergé par Google Apps Script (un seul fichier) ou site séparé qui appelle l'URL /exec ; sinon mode démo
   const GAS = !!(window.google && google.script && google.script.run);
@@ -357,6 +357,7 @@
       <div class="duo" aria-label="Les fondateurs">
         <figure><img src="${IMG.thiamP}" alt="Photo de ${esc(thiam.nom)}"><figcaption>${esc(thiam.nom)}<span>Professeur de mathématiques</span></figcaption></figure>
         <figure><img src="${IMG.fayeP}" alt="Photo de ${esc(faye.nom)}"><figcaption>${esc(faye.nom)}<span>Professeur de mathématiques</span></figcaption></figure>
+        <figure><img src="${IMG.seneP}" alt="Photo de ${esc(sene.nom)}"><figcaption>${esc(sene.nom)}<span>Professeur de physique-chimie</span></figcaption></figure>
         <div class="medal"><strong>${esc(st.resultats.titre)}</strong><span>${st.resultats.details.map(esc).join(' · ')} · Bac ${esc(st.resultats.annee.split('-')[1] || '')}</span></div>
       </div>
       <div class="hero-text">

@@ -124,11 +124,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .hero .facts div { padding: 12px 12px 0 0; min-width: 0; }
 .hero .facts dt { font: 700 .7rem/1.3 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--h-soft); }
 .hero .facts dd { margin: 6px 0 0; font: 800 1.02rem/1.25 var(--display); color: #fff; }
-.duo { grid-area: duo; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; position: relative; }
+.duo { grid-area: duo; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; position: relative; }
 .duo figure { margin: 0; position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 4 / 5; background: #1f8fd0; box-shadow: 0 22px 50px rgba(0,0,0,.4); max-width: 100%; }
 .duo figure:nth-child(2) { transform: translateY(34px); }
 .duo img { width: 100%; height: 100%; object-fit: cover; }
-.duo figcaption { position: absolute; inset: auto 0 0 0; padding: 40px 14px 14px; background: linear-gradient(transparent, rgba(8,18,38,.92)); color: #fff; font: 900 1.15rem/1.15 var(--display); }
+.duo figcaption { position: absolute; inset: auto 0 0 0; padding: 36px 10px 12px; background: linear-gradient(transparent, rgba(8,18,38,.92)); color: #fff; font: 900 1rem/1.15 var(--display); }
 .duo figcaption span { display: block; font: 600 .74rem/1.3 var(--body); color: rgba(255,255,255,.78); margin-top: 3px; }
 .medal { grid-column: 1 / -1; justify-self: center; margin-top: 44px; background: #fff; color: #13274a; border-radius: 16px; padding: 12px 20px; text-align: center; box-shadow: 0 14px 34px rgba(0,0,0,.35); max-width: 100%; display: grid; gap: 3px; }
 .medal strong { font: 900 1.25rem/1.1 var(--display); color: #4f8a1c; }
@@ -142,7 +142,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   .duo { gap: 12px; }
   .medal { margin-top: 28px; }
   .duo figure:nth-child(2) { transform: translateY(18px); }
-  .duo figcaption { font-size: 1rem; padding: 34px 10px 10px; }
+  .duo { gap: 8px; }
+  .duo figure { border-radius: 14px; }
+  .duo figcaption { font-size: .82rem; padding: 26px 7px 8px; }
+  .duo figcaption span { font-size: .62rem; }
   .hero-text { text-align: left; }
 }
 @media (max-width: 520px) { .hero .facts { grid-template-columns: 1fr 1fr; } .hero .facts div:last-child { grid-column: 1 / -1; } }
