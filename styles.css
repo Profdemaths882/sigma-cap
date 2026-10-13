@@ -293,3 +293,10 @@ tr.me td { background: var(--ok-bg); }
 .bar .tr u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); opacity: .55; }
 .bar .tr i.bad { background: var(--bad); }
 .btn.sm.go { padding: .45rem .7rem; }
+
+/* QR code de partage (accueil) */
+.qr-share { display: flex; gap: 28px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; }
+.qr-share img { width: 220px; height: 220px; flex: none; border-radius: 8px; background: #fff; padding: 8px; }
+.qr-share p { margin: 8px 0; }
+.qr-share .btn { margin-top: 6px; }
+@media (max-width: 640px) { .qr-share { flex-direction: column; text-align: center; padding: 18px 16px; } .qr-share img { width: 200px; height: 200px; } }

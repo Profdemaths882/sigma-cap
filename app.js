@@ -329,6 +329,19 @@
       <div class="infobox" style="margin-top:18px">Déjà inscrit ? <a href="#espace"><b>Connecte-toi à ton espace</b></a>. Une question ? Appelez ${st.contacts.map(c => `<b>${esc(c.nom)}</b> au <b class="num">${esc(c.tel)}</b>`).join(' ou ')}.</div>
     </div></section>
 
+    <section class="blk" id="partager"><div class="wrap">
+      <div class="qr-share">
+        <img src="img/qrcode.png" alt="QR code du site Sigma Cap" width="220" height="220">
+        <div>
+          <p class="eyebrow">Partager Sigma Cap</p>
+          <h2 style="margin-top:8px">Scannez pour vous inscrire</h2>
+          <p>Montrez ce QR code à un camarade ou à un parent : il ouvre directement cette page sur son téléphone.</p>
+          <p class="small muted num">profdemaths882.github.io/sigma-cap</p>
+          <a href="img/qrcode-affiche.png" download="QR-code-Sigma-Cap.png" class="btn sm">Télécharger le QR code</a>
+        </div>
+      </div>
+    </div></section>
+
     <footer class="site"><div class="wrap">
       <div class="pdm"><img src="${IMG.pdm}" alt="Logo ProfDeMaths 2.0"><span>Sigma Cap — Vers la réussite · ${esc(st.lieu)}<br><span class="small">Ensemble vers l'excellence</span></span></div>
       <a href="#espace" class="btn sm ghost">Espace élèves, profs et gestion</a>
