@@ -301,3 +301,25 @@ tr.me td { background: var(--ok-bg); }
 .qr-share .btn { margin-top: 6px; }
 @media (max-width: 640px) { .qr-share { flex-direction: column; text-align: center; padding: 18px 16px; } .qr-share img { width: 200px; height: 200px; } }
 .callout.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+
+/* Suivi des notes */
+.note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.note-card { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; align-content: start; background: var(--surface); }
+.nc-head, .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.nc-nums { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.nc-nums > div { display: grid; }
+.nc-nums .l { font-size: .75rem; color: var(--muted); }
+.nc-nums b { font: 800 1.35rem/1.1 var(--display); color: var(--ink); }
+.nc-nums small { color: var(--muted); }
+.tend { font-weight: 700; white-space: nowrap; }
+.nc-nums b.tend { font-size: 1rem; }
+.tend.hausse { color: var(--ok); } .tend.baisse { color: var(--bad); } .tend.stable, .tend.debut { color: var(--muted); }
+.spark { display: block; overflow: visible; }
+.spark path { fill: none; stroke: var(--sky); stroke-width: 2; stroke-linejoin: round; }
+.spark circle { fill: var(--sky); }
+.spark .mid { stroke: var(--line); stroke-dasharray: 3 3; }
+.com { border-left: 3px solid var(--sky); background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+.com p { margin: 4px 0 0; }
+table.mini { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: 6px; }
+table.mini td { padding: 5px 4px; border-top: 1px solid var(--line); }
+h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }

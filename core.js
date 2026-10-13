@@ -126,6 +126,16 @@ var SigmaCore = (function () {
     function setPwd(o, pwd) { o.salt = st.uuid().replace(/-/g, '').slice(0, 12); o.pwd = sha256(o.salt + '|' + pwd); }
     function okPwd(o, pwd) { return !!o.pwd && sha256(o.salt + '|' + pwd) === o.pwd; }
     function newCode() { var h = st.uuid().replace(/-/g, ''), c = ''; for (var i = 0; i < 6; i++) c += CODE_ABC[parseInt(h.substr(i * 2, 2), 16) % CODE_ABC.length]; return c; }
+    // Suivi des notes : { notes: [{id, mat, val, date, type, lib, at}], coms: [{id, mat, texte, date, par, role}] } rangé en JSON dans la colonne « suivi »
+    function suiviOf(s) {
+      var o = null; try { o = s.suivi ? (typeof s.suivi === 'string' ? JSON.parse(s.suivi) : s.suivi) : null; } catch (e) { o = null; }
+      o = o || {}; if (!Array.isArray(o.notes)) o.notes = []; if (!Array.isArray(o.coms)) o.coms = []; return o;
+    }
+    function teaches(sess, s, mat) {
+      if (sess.role === 'admin') return true;
+      var me = find('teachers', sess.id); if (!me) return false;
+      return st.read('sessions').some(function (x) { return x.prof === me.nom && asList(x.classes).indexOf(s.classe) >= 0 && (!mat || x.matiere === mat) && asList(s.matieres).indexOf(x.matiere) >= 0; });
+    }
     function nextNum() { return 'SC26-' + ('000' + st.nextCounter()).slice(-4); }
     function settings() { return st.getSettings(); }
     function today() { return st.today(); }
@@ -160,7 +170,7 @@ var SigmaCore = (function () {
         var mine = d.sessions.filter(function (x) { return x.prof === me.nom; });
         var studs = d.students.filter(function (s) {
           return s.statut !== 'abandon' && mine.some(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && asList(s.matieres).indexOf(x.matiere) >= 0; });
-        }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut }; });
+        }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut, createdAt: s.createdAt, suivi: s.suivi || '' }; });
         return { role: 'prof', me: pubTeacher(me), settings: d.settings, sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
           finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d) };
       }
@@ -279,6 +289,46 @@ var SigmaCore = (function () {
           if (st.read('payments').filter(function (x) { return x.studentId === me.id && x.statut === 'a_valider'; }).length >= 5) throw new Error('Tu as déjà 5 paiements en attente de validation.');
           st.upsert('payments', { id: 'pay-' + st.uuid().replace(/-/g, '').slice(0, 10), studentId: me.id, mois: mois, montant: mt, mode: p.mode, date: today(), ref: clean(p.ref, 40),
             note: clean(p.note, 120), statut: 'a_valider', declarePar: 'eleve', validePar: '', valideLe: '', createdAt: today() });
+          return dataFor(sess);
+        }
+        case 'addNote': {
+          need(sess, ['eleve']);
+          var se = find('students', sess.id), n = req.note || {}, nm = String(n.mat || '');
+          if (asList(se.matieres).indexOf(nm) < 0) throw new Error('Choisis une de tes matières.');
+          var v = parseFloat(String(n.val == null ? '' : n.val).replace(',', '.'));
+          if (isNaN(v) || v < 0 || v > 20) throw new Error('La note doit être comprise entre 0 et 20.');
+          var nd = /^\d{4}-\d{2}-\d{2}$/.test(String(n.date || '')) && n.date <= today() ? n.date : today();
+          var su = suiviOf(se);
+          if (su.notes.length >= 200) throw new Error('Nombre maximum de notes atteint.');
+          su.notes.push({ id: 'n-' + st.uuid().replace(/-/g, '').slice(0, 8), mat: nm, val: Math.round(v * 100) / 100, date: nd, type: clean(n.type, 30) || 'Devoir', lib: clean(n.lib, 60), at: today() });
+          se.suivi = JSON.stringify(su); st.upsert('students', se);
+          return dataFor(sess);
+        }
+        case 'delNote': {
+          need(sess, ['eleve']);
+          var sd = find('students', sess.id), sud = suiviOf(sd);
+          sud.notes = sud.notes.filter(function (x) { return x.id !== req.id; });
+          sd.suivi = JSON.stringify(sud); st.upsert('students', sd);
+          return dataFor(sess);
+        }
+        case 'comment': {
+          need(sess, ['prof', 'admin']);
+          var sc = find('students', req.studentId), cm = String(req.mat || '');
+          if (!sc) throw new Error('Élève introuvable.');
+          if (!teaches(sess, sc, cm)) throw new Error("Vous n'enseignez pas cette matière à cet élève.");
+          var tx = clean(req.texte, 400); if (tx.length < 2) throw new Error('Écrivez le commentaire.');
+          var suc = suiviOf(sc);
+          suc.coms.push({ id: 'c-' + st.uuid().replace(/-/g, '').slice(0, 8), mat: cm, texte: tx, date: today(), par: sess.nom, role: sess.role });
+          if (suc.coms.length > 50) suc.coms = suc.coms.slice(-50); // une cellule Google Sheet contient au plus 50 000 caractères
+          sc.suivi = JSON.stringify(suc); st.upsert('students', sc);
+          return dataFor(sess);
+        }
+        case 'delComment': {
+          need(sess, ['prof', 'admin']);
+          var sx = find('students', req.studentId); if (!sx) throw new Error('Élève introuvable.');
+          var sux = suiviOf(sx);
+          sux.coms = sux.coms.filter(function (x) { return x.id !== req.id || (sess.role !== 'admin' && x.par !== sess.nom); });
+          sx.suivi = JSON.stringify(sux); st.upsert('students', sx);
           return dataFor(sess);
         }
       }

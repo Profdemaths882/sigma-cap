@@ -6,7 +6,7 @@
   const CFG = window.SIGMA_CONFIG || {};
   const DEF = window.SIGMA_DEFAULTS;
   const IMG = Object.assign({
-    logo: 'img/logo-full.jpg', mark: 'img/mark.png', thiam: 'img/thiam.jpg', faye: 'img/faye.jpg', thiamP: 'img/thiam-p.jpg', fayeP: 'img/faye-p.jpg', pdm: 'img/profdemaths.jpg'
+    logo: 'img/logo-full.jpg', mark: 'img/mark.png', thiam: 'img/thiam.jpg', faye: 'img/faye.jpg', sene: 'img/sene.jpg', thiamP: 'img/thiam-p.jpg', fayeP: 'img/faye-p.jpg', pdm: 'img/profdemaths.jpg'
   }, window.SIGMA_IMG || {});
   // Hébergé par Google Apps Script (un seul fichier) ou site séparé qui appelle l'URL /exec ; sinon mode démo
   const GAS = !!(window.google && google.script && google.script.run);
@@ -55,6 +55,52 @@
   const payNote = p => isInsc(p) ? String(p.note || '').slice(INSC_TAG.length).trim() : (p.note || '');
   const payLabel = p => isInsc(p) ? "Frais d'inscription" : monthLabel(p.mois);
   /* Messages (rappels / avertissements) de l'admin, rangés en JSON dans la colonne « avis » de l'élève */
+  /* ---------- suivi des notes ---------- */
+  const TYPES_NOTE = ['Devoir', 'Composition', 'Interrogation', 'Examen blanc', 'Autre'];
+  const TEND = { hausse: '↗ En hausse', baisse: '↘ En baisse', stable: '→ Stable', debut: '• Première note' };
+  const GROUPES = { A: ['Groupe A · Avancé', 'ok'], B: ['Groupe B · Intermédiaire', 'neutral'], C: ['Groupe C · Renforcement', 'bad'] };
+  const suiviOf = s => { let o = null; try { o = s && s.suivi ? (typeof s.suivi === 'string' ? JSON.parse(s.suivi) : s.suivi) : null; } catch (_) { o = null; } o = o || {}; return { notes: Array.isArray(o.notes) ? o.notes : [], coms: Array.isArray(o.coms) ? o.coms : [] }; };
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const n1 = x => x == null ? '—' : String(Math.round(x * 10) / 10).replace('.', ',');
+  function serie(s, mat) {
+    const pts = []; const init = s['notes' + mat];
+    if (init !== '' && init != null && !isNaN(parseFloat(init))) pts.push({ id: 'init', val: parseFloat(init), date: s.createdAt || '', type: "Note d'entrée", lib: '' });
+    suiviOf(s).notes.filter(n => n.mat === mat).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.at || '').localeCompare(b.at || ''))
+      .forEach(n => pts.push(Object.assign({}, n, { val: +n.val })));
+    return pts;
+  }
+  /* Groupe : moyenne des 3 dernières notes (A ≥ 14, B de 10 à 14, C < 10).
+     Tendance : dernière note comparée à la moyenne des 3 précédentes (±1 point). */
+  function analyse(pts) {
+    if (!pts.length) return null;
+    const vals = pts.map(p => p.val), L = vals.length, last = vals[L - 1];
+    const recent = avg(vals.slice(-3)), moy = avg(vals);
+    const prev = L > 1 ? avg(vals.slice(-4, -1)) : null;
+    const delta = prev == null ? null : last - prev;
+    const tend = delta == null ? 'debut' : delta >= 1 ? 'hausse' : delta <= -1 ? 'baisse' : 'stable';
+    const groupe = recent >= 14 ? 'A' : recent >= 10 ? 'B' : 'C';
+    const alertes = [];
+    if (last < 10) alertes.push(['Sous la moyenne', 'bad']);
+    if (delta != null && delta <= -2) alertes.push(['Forte baisse (' + n1(delta) + ' pt)', 'bad']);
+    else if (L >= 3 && vals[L - 1] < vals[L - 2] && vals[L - 2] < vals[L - 3]) alertes.push(['2 baisses de suite', 'warn']);
+    if (delta != null && delta >= 2) alertes.push(['Belle progression (+' + n1(delta) + ' pt)', 'ok']);
+    const d = pts[L - 1].date, days = d ? Math.round((Date.parse(today()) - Date.parse(d)) / 864e5) : 0;
+    if (days > 30) alertes.push(['Aucune note depuis ' + days + ' jours', 'warn']);
+    let auto;
+    if (tend === 'debut') auto = 'Première note enregistrée : ajoute les suivantes pour voir la progression.';
+    else if (tend === 'hausse') auto = `En progrès : ${n1(last)}/20, soit ${n1(delta)} point(s) de plus que la moyenne des notes précédentes. Continue comme ça !`;
+    else if (tend === 'baisse') auto = `En baisse : ${n1(last)}/20, soit ${n1(-delta)} point(s) de moins que les notes précédentes. Revoir les dernières leçons et poser ses questions au prof.`;
+    else auto = `Résultats stables autour de ${n1(recent)}/20.`;
+    if (last < 10 && tend !== 'hausse') auto += ' Objectif : repasser au-dessus de 10.';
+    return { last, moy, recent, delta, tend, groupe, alertes, auto, nb: L };
+  }
+  function spark(pts, w = 120, h = 32) {
+    if (pts.length < 2) return '';
+    const xs = i => 3 + i * (w - 6) / (pts.length - 1), ys = v => h - 3 - v / 20 * (h - 6);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + xs(i).toFixed(1) + ' ' + ys(p.val).toFixed(1)).join(' ');
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Évolution des notes"><line class="mid" x1="0" x2="${w}" y1="${ys(10).toFixed(1)}" y2="${ys(10).toFixed(1)}"/><path d="${d}"/>${pts.map((p, i) => `<circle cx="${xs(i).toFixed(1)}" cy="${ys(p.val).toFixed(1)}" r="2.4"/>`).join('')}</svg>`;
+  }
+  const numsHTML = (a, pts) => `<div class="nc-nums"><div><span class="l">Dernière note</span><b>${n1(a.last)}</b><small>/20</small></div><div><span class="l">Moyenne</span><b>${n1(a.moy)}</b><small>/20</small></div><div><span class="l">Tendance</span><b class="tend ${a.tend}">${TEND[a.tend]}</b></div>${spark(pts)}</div>`;
   const avisOf = s => { let a = s && s.avis; if (typeof a === 'string') { try { a = a ? JSON.parse(a) : []; } catch (_) { a = []; } } return Array.isArray(a) ? a : []; };
   const prix = C.prix;
   function formule(classe, mats, tarifs) {
@@ -92,7 +138,7 @@
     settings: clone(DEF.settings), sessions: clone(DEF.sessions), teachers: clone(DEF.teachers),
     students: [], payments: [], expenses: [], finance: null, byMonth: [], alerts: [],
     role: null, me: null, token: '', sheetUrl: '', updatedAt: null,
-    tab: 'dash', ptab: 'finances', pubClass: '2nde S', payMonth: null, depMonth: null, finMonth: '',
+    tab: 'dash', ptab: 'finances', suiviFilter: { classe: '', mat: '' }, pubClass: '2nde S', payMonth: null, depMonth: null, finMonth: '',
     filter: { q: '', classe: '', statut: '' }, justRegistered: null
   };
   function mergeSettings(s) {
@@ -286,7 +332,8 @@
     const st = S.settings;
     const thiam = S.teachers.find(t => t.id === 't-thiam') || { nom: 'M. Racine Thiam', tel: st.contacts[0] && st.contacts[0].tel };
     const faye = S.teachers.find(t => t.id === 't-faye') || { nom: 'M. Faye', tel: st.contacts[1] && st.contacts[1].tel };
-    const others = S.teachers.filter(t => !['t-thiam', 't-faye'].includes(t.id) && t.statut === 'actif');
+    const sene = S.teachers.find(t => t.id === 't-sene') || { nom: 'M. Sène', tel: '' };
+    const others = S.teachers.filter(t => !['t-thiam', 't-faye', 't-sene'].includes(t.id) && t.statut === 'actif');
     const byMat = MATIERES.map(m => [m, others.filter(t => t.matiere === m).map(t => t.nom)]).filter(x => x[1].length);
     const debutTxt = st.debut ? dayName(st.debut) + ' ' + dateLabel(st.debut) : 'à préciser';
 
@@ -344,6 +391,7 @@
       <div class="team">
         <article class="person"><img src="${IMG.thiam}" alt="Photo de ${esc(thiam.nom)}"><div><h3>${esc(thiam.nom)}</h3><p class="role">Professeur de mathématiques · fondateur de ProfDeMaths 2.0</p><p class="tel">${esc(thiam.tel)}</p></div></article>
         <article class="person"><img src="${IMG.faye}" alt="Photo de ${esc(faye.nom)}"><div><h3>${esc(faye.nom)}</h3><p class="role">Professeur de mathématiques · Lycée Kennedy</p><p class="tel">${esc(faye.tel)}</p></div></article>
+        <article class="person"><img src="${IMG.sene}" alt="Photo de ${esc(sene.nom)}"><div><h3>${esc(sene.nom)}</h3><p class="role">Professeur de physique-chimie · Cours privé Machallah, Yalla Surren</p>${sene.tel ? `<p class="tel">${esc(sene.tel)}</p>` : ''}</div></article>
       </div>
       ${byMat.length ? `<div class="others">${byMat.map(([m, ns]) => `<span><b>${MAT_LABEL[m]} :</b> ${ns.map(esc).join(', ')}</span>`).join('')}</div>` : ''}
     </div></section>
@@ -581,6 +629,7 @@
           <div class="kpi"><span class="l">Statut</span><span class="v" style="font-size:1.1rem"><span class="pill ${sc}">${sl}</span></span><span class="s">N° ${esc(me.num)}</span></div>
         </div>
         ${avisHTML}${alertes}${action}
+        ${suiviEleveHTML(me)}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
           <div class="tbl-wrap"><table><thead><tr><th>Échéance</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
           ${(() => { const [l, c, p] = inscState(me); return `<tr><td><b>Frais d'inscription</b></td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(me.tarif)}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; })()}
@@ -601,6 +650,89 @@
       if (code.length < 4) { const x = $('#cf-err'); x.textContent = 'Saisis le code reçu.'; x.hidden = false; return; }
       try { applyData(await call('confirm', { codeConf: code })); toast('Inscription confirmée !'); renderEleve(); }
       catch (x) { const er = $('#cf-err'); er.textContent = x.message; er.hidden = false; }
+    });
+  }
+  function suiviEleveHTML(me) {
+    const su = suiviOf(me);
+    const cards = asList(me.matieres).map(m => {
+      const pts = serie(me, m), a = analyse(pts), coms = su.coms.filter(c => c.mat === m).slice().reverse();
+      return `<div class="note-card"><div class="nc-head"><span class="pill ${esc(m)}">${MAT_LABEL[m] || esc(m)}</span>${a ? `<span class="pill ${GROUPES[a.groupe][1]}">${GROUPES[a.groupe][0]}</span>` : ''}</div>
+        ${a ? `${numsHTML(a, pts)}${a.alertes.length ? `<div class="chips">${a.alertes.map(([t, c]) => `<span class="pill ${c}">${esc(t)}</span>`).join('')}</div>` : ''}<p class="small">${esc(a.auto)}</p>` : '<p class="muted small">Aucune note pour l\'instant.</p>'}
+        ${coms.slice(0, 3).map(c => `<div class="com"><b>${esc(c.par)}</b> <span class="muted small">· ${esc(dateLabel(c.date))}</span><p>${esc(c.texte)}</p></div>`).join('')}
+        ${pts.length ? `<details><summary class="small">Toutes mes notes (${pts.length})</summary><table class="mini"><tbody>${pts.slice().reverse().map(p => `<tr><td>${esc(dateLabel(p.date))}</td><td>${esc(p.type)}${p.lib ? ' · ' + esc(p.lib) : ''}</td><td class="n"><b>${n1(p.val)}</b></td><td>${p.id !== 'init' ? `<button class="btn sm ghost" data-act="del-note" data-id="${esc(p.id)}" aria-label="Supprimer cette note">✕</button>` : ''}</td></tr>`).join('')}</tbody></table></details>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="panel"><div class="toolbar"><h3 class="grow">Mes notes et ma progression</h3><button class="btn primary sm" data-act="add-note">+ Ajouter une note</button></div>
+      <p class="small muted">Ajoute chaque nouvelle note (devoir, composition…). Tu es placé automatiquement dans un groupe selon tes 3 dernières notes, et ton prof suit ton évolution.</p>
+      <div class="note-grid">${cards}</div></div>`;
+  }
+  function addNoteModal() {
+    const me = S.me;
+    openModal('Ajouter une note', `<form class="grid2" novalidate>
+      <label class="f">Matière<select id="n-mat">${asList(me.matieres).map(m => `<option value="${esc(m)}">${MAT_LABEL[m] || esc(m)}</option>`).join('')}</select></label>
+      <label class="f">Note sur 20<input id="n-val" inputmode="decimal" placeholder="ex. 12,5"></label>
+      <label class="f">Type<select id="n-type">${TYPES_NOTE.map(t => `<option>${t}</option>`).join('')}</select></label>
+      <label class="f">Date<input id="n-date" type="date" value="${today()}" max="${today()}"></label>
+      <label class="f" style="grid-column:1/-1">Précision <span class="h">facultatif · ex. « Devoir n°2 – fonctions »</span><input id="n-lib" maxlength="60"></label>
+    </form><p class="err" id="n-err" hidden></p>`, `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="n-save">Enregistrer la note</button>`);
+    $('#n-save').addEventListener('click', async () => {
+      const val = parseFloat($('#n-val').value.replace(',', '.')); const er = $('#n-err');
+      if (isNaN(val) || val < 0 || val > 20) { er.textContent = 'Indique une note entre 0 et 20.'; er.hidden = false; return; }
+      $('#n-save').disabled = true;
+      try { applyData(await call('addNote', { note: { mat: $('#n-mat').value, val, type: $('#n-type').value, date: $('#n-date').value, lib: $('#n-lib').value.trim() } })); closeModal(); toast('Note enregistrée'); renderEleve(); }
+      catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = /Accès refusé/.test(x.message) ? "Le serveur n'est pas encore à jour pour les notes : préviens l'admin." : x.message; er.hidden = false; $('#n-save').disabled = false; }
+    });
+  }
+
+  /* suivi des notes côté prof et gestionnaire */
+  function suiviPane(students, matsFor) {
+    const rows = []; students.forEach(s => matsFor(s).forEach(m => { const pts = serie(s, m); rows.push({ s, m, pts, a: analyse(pts) }); }));
+    const f = S.suiviFilter;
+    const classes = [...new Set(rows.map(r => r.s.classe))].sort(), mats = [...new Set(rows.map(r => r.m))];
+    const vis = rows.filter(r => (!f.classe || r.s.classe === f.classe) && (!f.mat || r.m === f.mat));
+    const enDiff = vis.filter(r => r.a && r.a.alertes.some(x => x[1] === 'bad')).length;
+    const sansNote = vis.filter(r => !r.a).length;
+    const head = `<thead><tr><th>Élève</th><th>Matière</th><th class="n">Dernière</th><th class="n">Moyenne</th><th>Tendance</th><th>Évolution</th><th>Alertes</th><th></th></tr></thead>`;
+    const line = r => { const nc = suiviOf(r.s).coms.filter(c => c.mat === r.m).length; return `<tr><td><b>${esc(fullName(r.s))}</b><span class="sub num">${esc(r.s.num)}</span></td><td><span class="pill ${esc(r.m)}">${esc(r.m)}</span></td>
+      <td class="n">${r.a ? '<b>' + n1(r.a.last) + '</b>' : '—'}</td><td class="n">${r.a ? n1(r.a.moy) : '—'}</td><td>${r.a ? `<span class="tend ${r.a.tend}">${TEND[r.a.tend]}</span>` : ''}</td><td>${spark(r.pts, 100, 28)}</td>
+      <td>${r.a ? r.a.alertes.map(([t, c]) => `<span class="pill ${c}">${esc(t)}</span>`).join(' ') : '<span class="muted small">pas encore de note</span>'}${nc ? `<span class="sub">${nc} commentaire${nc > 1 ? 's' : ''}</span>` : ''}</td>
+      <td><button class="btn sm" data-act="suivi" data-id="${esc(r.s.id)}" data-v="${esc(r.m)}">Suivre</button></td></tr>`; };
+    const blocks = classes.filter(c => !f.classe || c === f.classe).map(c => {
+      const rc = vis.filter(r => r.s.classe === c); if (!rc.length) return '';
+      return `<div class="panel"><h3>${esc(c)} · ${new Set(rc.map(r => r.s.id)).size} élève(s)</h3>${['A', 'B', 'C', 'Z'].map(k => {
+        const l = rc.filter(r => (r.a ? r.a.groupe : 'Z') === k); if (!l.length) return '';
+        const t = k === 'Z' ? ['Sans note saisie', 'neutral'] : GROUPES[k];
+        return `<h4 class="grp"><span class="pill ${t[1]}">${t[0]}</span> <span class="muted small">${l.length}</span></h4><div class="tbl-wrap"><table>${head}<tbody>${l.sort((x, y) => x.s.nom.localeCompare(y.s.nom)).map(line).join('')}</tbody></table></div>`;
+      }).join('')}</div>`;
+    }).join('');
+    return `<div class="toolbar"><select data-act="sf-classe" aria-label="Classe"><option value="">Toutes les classes</option>${classes.map(c => `<option ${f.classe === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+        <select data-act="sf-mat" aria-label="Matière"><option value="">Toutes les matières</option>${mats.map(m => `<option value="${esc(m)}" ${f.mat === m ? 'selected' : ''}>${MAT_LABEL[m] || esc(m)}</option>`).join('')}</select>
+        <span class="grow muted small">Groupes calculés sur les 3 dernières notes : A ≥ 14 · B de 10 à 14 · C sous 10</span></div>
+      <div class="kpis"><div class="kpi"><span class="l">Élèves suivis</span><span class="v">${new Set(vis.map(r => r.s.id)).size}</span></div>
+        <div class="kpi ${enDiff ? 'alert' : ''}"><span class="l">Sous 10 ou en forte baisse</span><span class="v">${enDiff}</span></div>
+        <div class="kpi"><span class="l">Sans note saisie</span><span class="v">${sansNote}</span></div></div>
+      ${blocks || '<div class="tbl-wrap"><p class="empty-state">Aucun élève à suivre pour l\'instant.</p></div>'}`;
+  }
+  const profMats = s => [...new Set(S.sessions.filter(x => x.prof === S.me.nom && x.classes.includes(s.classe) && asList(s.matieres).includes(x.matiere)).map(x => x.matiere))];
+  const rerender = () => (S.role === 'prof' ? renderProf() : S.role === 'eleve' ? renderEleve() : renderPane());
+  function suiviModal(id, mat) {
+    const s = S.students.find(x => x.id === id); if (!s) return;
+    const pts = serie(s, mat), a = analyse(pts), coms = suiviOf(s).coms.filter(c => c.mat === mat).slice().reverse();
+    const QUICK = ['Bon travail, continue !', 'Des progrès : persévère.', 'Attention à la baisse : revois les dernières leçons.', 'Viens me voir après le cours.'];
+    openModal(fullName(s) + ' · ' + (MAT_LABEL[mat] || mat), `
+      ${a ? `<div class="chips"><span class="pill ${GROUPES[a.groupe][1]}">${GROUPES[a.groupe][0]}</span>${a.alertes.map(([t, c]) => `<span class="pill ${c}">${esc(t)}</span>`).join('')}</div>${numsHTML(a, pts)}<p class="small">${esc(a.auto)}</p>` : '<p class="muted">Aucune note saisie pour cette matière.</p>'}
+      ${pts.length ? `<div class="tbl-wrap"><table><tbody>${pts.slice().reverse().map(p => `<tr><td>${esc(dateLabel(p.date))}</td><td>${esc(p.type)}${p.lib ? ' · ' + esc(p.lib) : ''}</td><td class="n"><b>${n1(p.val)}</b>/20</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <h4 style="margin:6px 0 0">Commentaires</h4>
+      ${coms.length ? coms.map(c => `<div class="com"><b>${esc(c.par)}</b> <span class="muted small">· ${esc(dateLabel(c.date))}</span>${S.role === 'admin' || c.par === S.me.nom ? ` <button class="btn sm ghost" data-act="del-com" data-id="${esc(s.id)}" data-v="${esc(c.id)}" data-m="${esc(mat)}">Retirer</button>` : ''}<p>${esc(c.texte)}</p></div>`).join('') : '<p class="muted small">Aucun commentaire pour l\'instant.</p>'}
+      <div class="chips">${QUICK.map(q => `<button type="button" class="btn sm" data-act="quick-com" data-v="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <label class="f">Nouveau commentaire <span class="h">visible par l'élève et ses parents</span><textarea id="c-txt" rows="3"></textarea></label><p class="err" id="c-err" hidden></p>`,
+      `<button class="btn" data-act="close">Fermer</button><button class="btn primary" id="c-save">Publier le commentaire</button>`);
+    $('#c-save').addEventListener('click', async () => {
+      const texte = $('#c-txt').value.trim(), er = $('#c-err');
+      if (texte.length < 2) { er.textContent = 'Écrivez le commentaire.'; er.hidden = false; return; }
+      $('#c-save').disabled = true;
+      try { applyData(await call('comment', { studentId: id, mat, texte })); toast('Commentaire publié'); rerender(); suiviModal(id, mat); }
+      catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = /Table inconnue|Accès refusé/.test(x.message) ? "Le serveur n'est pas encore à jour pour les commentaires (voir la mise à jour du script Google)." : x.message; er.hidden = false; $('#c-save').disabled = false; }
     });
   }
   function declareModal() {
@@ -657,7 +789,7 @@
     const mine = S.sessions.filter(s => s.prof === me.nom);
     const byClass = {};
     S.students.forEach(s => { (byClass[s.classe] = byClass[s.classe] || []).push(s); });
-    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['eleves', `Mes élèves (${S.students.length})`]];
+    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['suivi', 'Suivi des notes'], ['eleves', `Mes élèves (${S.students.length})`]];
     let body = '';
     if (S.ptab === 'finances') body = `<div class="kpis">
           <div class="kpi"><span class="l">Ma part ${S.finMonth ? '· ' + monthLabel(S.finMonth) : 'depuis la rentrée'}</span><span class="v">${fcfa(myRow.share)}</span><span class="s">${String(me.parts).replace('.', ',')} part${me.parts > 1 ? 's' : ''}</span></div>
@@ -668,6 +800,7 @@
     else if (S.ptab === 'cours') body = `<div class="panel"><h3>Mes cours · ${hoursOf(me.nom)} h par semaine</h3>
           ${mine.length ? `<div class="tbl-wrap"><table><tbody>${mine.sort((a, b) => JOURS.indexOf(a.jour) - JOURS.indexOf(b.jour) || mins(a.debut) - mins(b.debut)).map(s => `<tr><td><b>${s.jour}</b></td><td class="num">${hfmt(s.debut)} – ${hfmt(s.fin)}</td><td><span class="pill ${esc(s.matiere)}">${esc(s.matiere)}</span></td><td>${s.classes.map(esc).join(' + ')}</td><td class="muted">${esc(s.salle)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Aucun cours attribué pour l\'instant.</p>'}</div>
         <div class="panel"><h3>Emploi du temps complet</h3><div class="week">${weekHTML(S.sessions, false, me.nom)}</div></div>`;
+    else if (S.ptab === 'suivi') body = suiviPane(S.students.filter(s => s.statut !== 'abandon'), profMats);
     else body = `${(S.alerts || []).filter(a => a.type === 'groupe').map(a => `<div class="warnbox">${esc(a.msg)}</div>`).join('')}
         ${Object.keys(byClass).length ? Object.keys(byClass).sort().map(c => `<div class="panel"><h3>${esc(c)} · ${byClass[c].length} élève${byClass[c].length > 1 ? 's' : ''}</h3><div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>École d'origine</th><th class="n">Maths</th><th class="n">PC</th><th class="n">SVT</th><th>Statut</th></tr></thead><tbody>
           ${byClass[c].sort((a, b) => a.nom.localeCompare(b.nom)).map(s => { const [l, k] = STATUTS[s.statut] || ['?', 'neutral']; return `<tr><td><b>${esc(fullName(s))}</b><span class="sub num">${esc(s.num)}</span></td><td>${esc(s.etablissement) || '—'}</td><td class="n">${esc(String(s.notesMaths || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesPC || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesSVT || '—').replace('.', ','))}</td><td><span class="pill ${k}">${l}</span></td></tr>`; }).join('')}
@@ -680,7 +813,7 @@
   /* =========================================================
      ESPACE GESTIONNAIRE
      ========================================================= */
-  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
+  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['suivi', 'Suivi des notes'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
   function renderAdmin() {
     const pending = S.students.filter(s => s.statut === 'attente').length;
     const toVal = S.payments.filter(p => p.statut === 'a_valider').length;
@@ -692,7 +825,7 @@
   }
   function renderPane() {
     const p = $('#pane'); if (!p) return;
-    const fn = { dash: paneDash, eleves: paneEleves, paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
+    const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
     p.innerHTML = fn();
     if (S.tab === 'eleves') bindStudentFilters();
     if (S.tab === 'params') bindParams();
@@ -836,7 +969,7 @@
       if (!s.prenom || !s.nom || !s.matieres.length) { er.textContent = 'Indiquez le prénom, le nom et au moins une matière.'; er.hidden = false; return; }
       if (isNew && !pw) { er.textContent = "Donnez un mot de passe à l'élève : sans mot de passe, il ne peut pas se connecter."; er.hidden = false; return; }
       if (pw && pw.length < 4) { er.textContent = 'Mot de passe : 4 caractères minimum.'; er.hidden = false; return; }
-      const item = clone(s); delete item.hasPwd; if (pw) item._pwd = pw;
+      const item = clone(s); delete item.hasPwd; delete item.suivi; delete item.avis; if (pw) item._pwd = pw;
       item.essais = 0; // enregistrer la fiche débloque la saisie du code
       const r = await mutate('save', { kind: 'students', item }, isNew ? 'Élève inscrit · encaissez le paiement' : 'Fiche enregistrée');
       if (!r) return;
@@ -1227,6 +1360,15 @@
       }
       case 'receipt': receiptModal(id); break;
       case 'avis': closeModal(); avisModal(id); break;
+      case 'add-note': addNoteModal(); break;
+      case 'del-note': confirmThen(el, 'Supprimer ?', async () => {
+        try { applyData(await call('delNote', { id })); toast('Note supprimée'); renderEleve(); } catch (x) { if (/Session expirée/.test(x.message)) return expired(); toast(x.message); }
+      }); break;
+      case 'suivi': suiviModal(id, el.dataset.v); break;
+      case 'quick-com': { const t = $('#c-txt'); if (t) { t.value = (t.value ? t.value.trim() + ' ' : '') + el.dataset.v; t.focus(); } break; }
+      case 'del-com': confirmThen(el, 'Confirmer', async () => {
+        try { applyData(await call('delComment', { studentId: id, id: el.dataset.v })); toast('Commentaire retiré'); rerender(); suiviModal(id, el.dataset.m); } catch (x) { if (/Session expirée/.test(x.message)) return expired(); toast(x.message); }
+      }); break;
       case 'del-avis': confirmThen(el, 'Confirmer', async () => {
         const s = S.students.find(x => x.id === id); if (!s) return;
         if (await mutate('save', { kind: 'students', item: { id, avis: JSON.stringify(avisOf(s).filter(a => a.id !== el.dataset.v)) } }, 'Message retiré')) { closeModal(); renderAdmin(); studentModal(id); }
@@ -1259,6 +1401,7 @@
     const a = e.target.dataset && e.target.dataset.act;
     if (a === 'pay-month') { S.payMonth = e.target.value; renderPane(); }
     if (a === 'dep-month') { S.depMonth = e.target.value; renderPane(); }
+    if (a === 'sf-classe' || a === 'sf-mat') { S.suiviFilter[a === 'sf-classe' ? 'classe' : 'mat'] = e.target.value; rerender(); }
     if (a === 'fin-month') { S.finMonth = e.target.value; S.role === 'prof' ? renderProf() : renderPane(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
