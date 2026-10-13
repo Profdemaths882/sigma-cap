@@ -328,6 +328,18 @@
   /* =========================================================
      PAGE PUBLIQUE
      ========================================================= */
+  function payTabsHTML() {
+    const tel = (S.settings.contacts[0] && S.settings.contacts[0].tel) || '';
+    const qui = (S.settings.contacts || []).map(c => c.nom).join(' ou ');
+    const k = S.payTab || 'wave';
+    const T = {
+      wave: ['Wave', `Envoie le montant avec <b>Wave</b> au <b class="num">${esc(tel)}</b> (${esc((S.settings.contacts[0] || {}).nom || '')}). Garde le SMS : tu indiqueras sa <b>référence</b> en déclarant le paiement.`],
+      om: ['Orange Money', `Envoie le montant avec <b>Orange Money</b> au <b class="num">${esc(tel)}</b> (${esc((S.settings.contacts[0] || {}).nom || '')}). Garde le SMS : tu indiqueras sa <b>référence</b> en déclarant le paiement.`],
+      cash: ['Espèces', `Remets le montant en <b>espèces</b> à ${esc(qui)}. Demande ton reçu, puis déclare le paiement en choisissant « Espèces ».`]
+    };
+    return `<div class="paytabs"><div class="pt-head" role="tablist" aria-label="Moyen de paiement">${Object.entries(T).map(([key, [lab]]) => `<button type="button" role="tab" class="pt-${key}" data-act="paytab" data-v="${key}" aria-selected="${k === key}">${lab}</button>`).join('')}</div>
+      <div class="pt-body pt-${k}" role="tabpanel"><p>${T[k][1]}</p></div></div>`;
+  }
   function renderPublic() {
     const st = S.settings;
     const thiam = S.teachers.find(t => t.id === 't-thiam') || { nom: 'M. Racine Thiam', tel: st.contacts[0] && st.contacts[0].tel };
@@ -400,10 +412,12 @@
     <section class="blk" id="inscription"><div class="wrap" style="max-width:780px">
       <div class="blk-head"><div><p class="eyebrow">Inscription en ligne</p><h2 style="margin-top:8px">Inscris-toi en 3 étapes</h2></div></div>
       <ol class="steps">
-        <li><b>Inscris-toi</b> avec le formulaire et crée ton mot de passe : tu obtiens ton espace élève et ton N° d'inscription.</li>
-        <li><b>Paie ta mensualité</b> (${esc(st.paiement)}) puis <b>déclare le paiement</b> dans ton espace.</li>
-        <li><b>Saisis le code de confirmation</b> que l'admin te remet après avoir validé ton paiement.</li>
+        <li><div><b>Inscris-toi en ligne</b><p>Remplis le formulaire et crée ton mot de passe : tu obtiens ton espace élève et ton N° d'inscription.</p></div></li>
+        <li><div><b>Paie les frais d'inscription</b><p>Même montant que ta mensualité. Choisis ton moyen de paiement ci-dessous, puis déclare le paiement dans ton espace.</p></div></li>
+        <li><div><b>Saisis ton code de confirmation</b><p>Après validation de ton paiement, l'admin te remet un code : saisis-le dans ton espace et ta place est réservée.</p></div></li>
       </ol>
+      ${payTabsHTML()}
+      <p class="small muted" style="margin:-8px 0 22px">Ensuite, la mensualité se paie chaque mois, au plus tard le ${limitDay()} du mois.</p>
       <div id="reg-zone">${st.inscriptionsOuvertes ? regFormHTML() : '<div class="infobox">Les inscriptions en ligne sont fermées pour le moment. Contactez-nous par téléphone.</div>'}</div>
       <div class="infobox" style="margin-top:18px">Déjà inscrit ? <a href="#espace"><b>Connecte-toi à ton espace</b></a>. Une question ? Appelez ${st.contacts.map(c => `<b>${esc(c.nom)}</b> au <b class="num">${esc(c.tel)}</b>`).join(' ou ')}.</div>
     </div></section>
@@ -1400,6 +1414,7 @@
         break;
       }
       case 'receipt': receiptModal(id); break;
+      case 'paytab': { S.payTab = el.dataset.v; const w = el.closest('.paytabs'); if (w) w.outerHTML = payTabsHTML(); break; }
       case 'avis': closeModal(); avisModal(id); break;
       case 'creds': closeModal(); credModal(el.dataset.kind, id); break;
       case 'add-note': addNoteModal(); break;

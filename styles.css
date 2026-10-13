@@ -198,7 +198,9 @@ section.blk + section.blk { border-top: 1px solid var(--line); }
 .quote { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 14px 16px; }
 .quote .amt { font: 900 1.6rem/1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
 .steps { list-style: none; counter-reset: st; margin: 0 0 22px; padding: 0; display: grid; gap: 10px; }
-.steps li { counter-increment: st; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.steps li b { font-family: var(--display); font-size: 1.02rem; color: var(--ink); }
+.steps li p { margin: 3px 0 0; color: var(--muted); font-size: .95rem; }
 .steps li::before { content: counter(st); width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--on-ink); font: 900 1rem/34px var(--display); text-align: center; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .err { color: var(--bad); font-weight: 600; font-size: .92rem; }
@@ -326,3 +328,15 @@ tr.me td { background: var(--ok-bg); }
 table.mini { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: 6px; }
 table.mini td { padding: 5px 4px; border-top: 1px solid var(--line); }
 h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
+
+/* Moyens de paiement (onglets) */
+.paytabs { margin: 0 0 18px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.pt-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pt-head button { border: 0; padding: 12px 6px; font: 800 .95rem/1.2 var(--display); cursor: pointer; background: var(--surface-2); color: var(--muted); border-bottom: 3px solid transparent; }
+.pt-head button[aria-selected="true"] { background: var(--surface); color: var(--ink); }
+.pt-head .pt-wave[aria-selected="true"] { border-bottom-color: #1dc4ff; color: #0a8fc2; }
+.pt-head .pt-om[aria-selected="true"] { border-bottom-color: #ff7900; color: #d45f00; }
+.pt-head .pt-cash[aria-selected="true"] { border-bottom-color: var(--ok); color: var(--ok); }
+.pt-body { padding: 14px 16px; border-left: 4px solid var(--line); }
+.pt-body p { margin: 0; }
+.pt-body.pt-wave { border-left-color: #1dc4ff; } .pt-body.pt-om { border-left-color: #ff7900; } .pt-body.pt-cash { border-left-color: var(--ok); }
