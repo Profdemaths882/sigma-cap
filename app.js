@@ -947,7 +947,7 @@
       </div>
       ${avisOf(s).length ? `<div class="panel" style="padding:12px"><h3 style="font-size:1rem">Messages affichés dans son espace</h3><div class="tbl-wrap"><table><tbody>${avisOf(s).slice().reverse().map(a => `<tr><td><span class="pill ${a.type === 'avertissement' ? 'bad' : 'warn'}">${a.type === 'avertissement' ? 'Avertissement' : 'Rappel'}</span><span class="sub">${esc(dateLabel(a.date))}${a.par ? ' · ' + esc(a.par) : ''}</span></td><td class="small">${esc(a.texte)}</td><td><button class="btn sm danger" data-act="del-avis" data-id="${esc(s.id)}" data-v="${esc(a.id)}">Retirer</button></td></tr>`).join('')}</tbody></table></div></div>` : ''}`}
       <p class="err" id="s-err" hidden></p>`,
-      `${isNew ? '' : `<button class="btn danger left" data-act="del-student" data-id="${esc(s.id)}">Supprimer</button><button class="btn" data-act="avis" data-id="${esc(s.id)}">Message</button><button class="btn" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>`}
+      `${isNew ? '' : `<button class="btn danger left" data-act="del-student" data-id="${esc(s.id)}">Supprimer</button><button class="btn" data-act="avis" data-id="${esc(s.id)}">Message</button><button class="btn" data-act="creds" data-kind="students" data-id="${esc(s.id)}" ${isActive(s) ? '' : 'disabled title="Disponible après validation du premier paiement"'}>Identifiants</button><button class="btn" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>`}
        <button class="btn" data-act="close">Annuler</button><button class="btn primary" id="s-save">${isNew ? 'Inscrire' : 'Enregistrer'}</button>`);
     let tarifTouched = !isNew && s.tarif !== prix(s.classe, s.matieres, S.settings.tarifs);
     let initDone = false;
@@ -994,7 +994,7 @@
   }
   function codeModalIfNew(studentId, before) {
     const s = S.students.find(x => x.id === studentId);
-    if (s && before === 'attente' && s.statut === 'code') openModal('Paiement validé · code créé', `<p>Remettez ce code à <b>${esc(fullName(s))}</b> pour qu'il confirme son inscription dans son espace.</p>${codeBox(s)}`, '<button class="btn primary" data-act="close">Fermer</button>');
+    if (s && before === 'attente' && s.statut === 'code') openModal('Paiement validé · code créé', `<p>Remettez ce code à <b>${esc(fullName(s))}</b> pour qu'il confirme son inscription dans son espace.</p>${codeBox(s)}<p class="small muted">Vous pouvez aussi lui envoyer d'un coup son identifiant, un mot de passe et ce code.</p>`, `<button class="btn" data-act="creds" data-kind="students" data-id="${esc(s.id)}">Envoyer les identifiants</button><button class="btn primary" data-act="close">Fermer</button>`);
   }
 
   /* ---------- paiements ---------- */
@@ -1186,7 +1186,7 @@
       <tbody>${S.teachers.map(t => `<tr class="click" data-act="edit-teacher" data-id="${esc(t.id)}">
         <td><b>${esc(t.nom)}</b>${t.tel ? `<span class="sub num">${esc(t.tel)}</span>` : ''}${t.note ? `<span class="sub">${esc(t.note)}</span>` : ''}</td><td><span class="pill ${esc(t.matiere)}">${esc(t.matiere)}</span></td>
         <td>${t.role === 'admin' ? '<span class="pill ok">Admin</span>' : 'Prof'}</td><td class="n">${String(C.partsOf(t)).replace('.', ',')}</td>
-        <td class="num">${esc(t.login) || '<span class="muted">—</span>'}</td><td>${t.hasPwd ? '<span class="pill ok">Mot de passe défini</span>' : '<span class="pill neutral">Pas de mot de passe</span>'}</td>
+        <td class="num">${esc(t.login) || '<span class="muted">—</span>'}</td><td>${t.hasPwd ? '<span class="pill ok">Mot de passe défini</span>' : '<span class="pill neutral">Pas de mot de passe</span>'}${t.login && t.statut !== 'poste à pourvoir' ? `<div style="margin-top:6px"><button class="btn sm" data-act="creds" data-kind="teachers" data-id="${esc(t.id)}">Envoyer les identifiants</button></div>` : ''}</td>
         <td class="n">${hoursOf(t.nom)} h</td><td><span class="pill ${PROF_STATUTS[t.statut] || 'neutral'}">${esc(t.statut)}</span></td></tr>`).join('')}</tbody></table></div>
       <p class="small muted">Les admins (rôle Admin) ont accès à toute la gestion. Les profs voient leurs cours, leurs élèves, l'état des finances et leur part.</p>`;
   }
@@ -1204,7 +1204,7 @@
       <label class="f">${t.hasPwd ? 'Nouveau mot de passe' : 'Mot de passe'} <span class="h">${t.hasPwd ? 'laisser vide pour garder l\'actuel' : '4 caractères minimum'}</span><input id="t-pw" autocomplete="new-password"></label>
       <label class="f" style="grid-column:1/-1">Note<input id="t-note" value="${esc(t.note)}"></label>
     </form><p class="err" id="t-err" hidden></p>`,
-      `${id ? `<button class="btn danger left" data-act="del-teacher" data-id="${esc(t.id)}">Supprimer</button>` : ''}<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="t-save">Enregistrer</button>`);
+      `${id ? `<button class="btn danger left" data-act="del-teacher" data-id="${esc(t.id)}">Supprimer</button>${t.login ? `<button class="btn" data-act="creds" data-kind="teachers" data-id="${esc(t.id)}">Envoyer les identifiants</button>` : ''}` : ''}<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="t-save">Enregistrer</button>`);
     $('#t-save').addEventListener('click', async () => {
       Object.assign(t, { nom: $('#t-nom').value.trim(), matiere: $('#t-mat').value, tel: $('#t-tel').value.trim(), statut: $('#t-st').value, parts: +$('#t-parts').value || 0, role: $('#t-role').value, login: $('#t-login').value.trim().toLowerCase().replace(/\s+/g, ''), note: $('#t-note').value.trim() });
       const pw = $('#t-pw').value.trim(); const er = $('#t-err');
@@ -1268,6 +1268,46 @@
         st.seuils[c] = Math.max(1, +$('#ts-' + i).value || 6);
       });
       if (await mutate('saveSettings', { settings: st }, 'Paramètres enregistrés')) renderPane();
+    });
+  }
+
+  /* ---------- envoi des identifiants (prof, élève ou parent) ---------- */
+  const newPwd = () => { const A = 'abcdefghjkmnpqrstuvwxyz', D = '23456789'; let p = ''; for (let i = 0; i < 4; i++) p += A[Math.floor(Math.random() * A.length)]; for (let i = 0; i < 3; i++) p += D[Math.floor(Math.random() * D.length)]; return p; };
+  function credText(kind, o, pw, dest) {
+    const link = pubLink() + '#espace';
+    if (kind === 'teachers') return `Sigma Cap — votre accès professeur\n\nBonjour ${o.nom},\nSite : ${link}\nIdentifiant : ${o.login}\nMot de passe : ${pw}\n\nDans votre espace : vos cours, le suivi des notes de vos élèves et votre part. Pensez à changer le mot de passe à la première connexion (bouton « Mot de passe »).`;
+    const code = o.statut === 'code' && o.codeConf ? `\nCode de confirmation : ${o.codeConf} (à saisir une seule fois dans l'espace)` : '';
+    const hello = dest === 'parent' ? `Bonjour${o.parentNom ? ' ' + o.parentNom : ''}, voici l'accès à l'espace Sigma Cap de ${fullName(o)} (${o.classe}).` : `Bonjour ${o.prenom}, voici ton accès à ton espace Sigma Cap (${o.classe}).`;
+    return `Sigma Cap — identifiants\n\n${hello}\nSite : ${link}\nIdentifiant : ${o.num}\nMot de passe : ${pw}${code}\n\nDans l'espace : paiements, emploi du temps, notes et progression. ${dest === 'parent' ? 'Pensez' : 'Pense'} à changer le mot de passe à la première connexion (bouton « Mot de passe »).`;
+  }
+  function credModal(kind, id) {
+    const o = (kind === 'teachers' ? S.teachers : S.students).find(x => x.id === id); if (!o) return;
+    if (kind === 'students' && !isActive(o)) { toast('Disponible après validation du premier paiement'); return; }
+    if (kind === 'teachers' && !o.login) { toast("Donnez d'abord un identifiant à ce prof"); return; }
+    const dests = kind === 'teachers' ? [['prof', o.tel, o.nom]] : [['eleve', o.telEleve, "l'élève"], ['parent', o.telParent, 'le parent' + (o.parentNom ? ' (' + o.parentNom + ')' : '')]];
+    const firstDest = (dests.find(d => waNum(d[1])) || dests[0])[0];
+    const pw0 = newPwd();
+    openModal('Envoyer les identifiants · ' + (kind === 'teachers' ? o.nom : fullName(o)), `<form class="grid2" novalidate>
+        <label class="f">Destinataire<select id="k-dest">${dests.map(([k, tel, lab]) => `<option value="${k}" ${k === firstDest ? 'selected' : ''} ${waNum(tel) ? '' : 'disabled'}>${esc(lab)} · ${tel ? esc(tel) : 'pas de numéro'}</option>`).join('')}</select></label>
+        <label class="f">Nouveau mot de passe <span class="h">généré, modifiable (4 caractères min.)</span><input id="k-pw" value="${pw0}" autocomplete="off"></label>
+        <label class="f" style="grid-column:1/-1">Message<textarea id="k-txt" rows="9"></textarea></label>
+      </form>
+      <p class="infobox small">Les mots de passe sont enregistrés chiffrés : on ne peut pas renvoyer l'ancien. L'envoi <b>remplace</b> donc le mot de passe actuel par celui-ci${kind === 'students' ? ' (le même sert à l\'élève et au parent)' : ''}.</p><p class="err" id="k-err" hidden></p>`,
+      `<span class="left" id="k-links"></span><button class="btn" data-act="close">Annuler</button><button class="btn primary" id="k-save">Enregistrer et préparer l'envoi</button>`);
+    const fill = () => { $('#k-txt').value = credText(kind, o, $('#k-pw').value.trim(), $('#k-dest').value); };
+    $('#k-dest').addEventListener('change', fill); $('#k-pw').addEventListener('input', fill); fill();
+    $('#k-save').addEventListener('click', async () => {
+      const pw = $('#k-pw').value.trim(), er = $('#k-err');
+      if (pw.length < 4) { er.textContent = 'Mot de passe : 4 caractères minimum.'; er.hidden = false; return; }
+      const d = dests.find(x => x[0] === $('#k-dest').value); const tel = waNum(d && d[1]);
+      if (!tel) { er.textContent = 'Pas de numéro de téléphone pour ce destinataire : ajoutez-le dans la fiche.'; er.hidden = false; return; }
+      $('#k-save').disabled = true;
+      const r = await mutate('save', { kind, item: { id: o.id, _pwd: pw } }, 'Mot de passe enregistré');
+      if (!r) { $('#k-save').disabled = false; return; }
+      const txt = $('#k-txt').value;
+      $('#k-save').style.display = 'none'; er.hidden = true;
+      $('#k-links').innerHTML = `<a class="btn go" target="_blank" rel="noopener" href="https://wa.me/${tel}?text=${encodeURIComponent(txt)}">Envoyer par WhatsApp</a> <a class="btn" href="sms:+${tel}?&body=${encodeURIComponent(txt)}">Par SMS</a> <button class="btn" type="button" data-act="copy-code" data-v="${esc(txt)}">Copier</button>`;
+      if (S.role === 'admin') renderPane();
     });
   }
 
@@ -1361,6 +1401,7 @@
       }
       case 'receipt': receiptModal(id); break;
       case 'avis': closeModal(); avisModal(id); break;
+      case 'creds': closeModal(); credModal(el.dataset.kind, id); break;
       case 'add-note': addNoteModal(); break;
       case 'del-note': confirmThen(el, 'Supprimer ?', async () => {
         try { applyData(await call('delNote', { id })); toast('Note supprimée'); renderEleve(); } catch (x) { if (/Session expirée/.test(x.message)) return expired(); toast(x.message); }
