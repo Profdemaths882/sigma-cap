@@ -300,3 +300,4 @@ tr.me td { background: var(--ok-bg); }
 .qr-share p { margin: 8px 0; }
 .qr-share .btn { margin-top: 6px; }
 @media (max-width: 640px) { .qr-share { flex-direction: column; text-align: center; padding: 18px 16px; } .qr-share img { width: 200px; height: 200px; } }
+.callout.bad { border-left-color: var(--bad); background: var(--bad-bg); }

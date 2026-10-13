@@ -47,6 +47,15 @@
   const waNum = s => { let d = digits(s); if (d.length === 9) d = '221' + d; return d; };
   const fullName = s => ((s.prenom || '') + ' ' + (s.nom || '')).trim();
   const clone = o => JSON.parse(JSON.stringify(o));
+  const addDays = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+  /* Frais d'inscription : même montant que la mensualité, payés à l'entrée.
+     Ils sont repérés par la mention « [Inscription] » au début de la note du paiement (colonne déjà présente côté serveur). */
+  const INSC_TAG = '[Inscription]';
+  const isInsc = p => p.type === 'inscription' || String(p.note || '').indexOf(INSC_TAG) === 0;
+  const payNote = p => isInsc(p) ? String(p.note || '').slice(INSC_TAG.length).trim() : (p.note || '');
+  const payLabel = p => isInsc(p) ? "Frais d'inscription" : monthLabel(p.mois);
+  /* Messages (rappels / avertissements) de l'admin, rangés en JSON dans la colonne « avis » de l'élève */
+  const avisOf = s => { let a = s && s.avis; if (typeof a === 'string') { try { a = a ? JSON.parse(a) : []; } catch (_) { a = []; } } return Array.isArray(a) ? a : []; };
   const prix = C.prix;
   function formule(classe, mats, tarifs) {
     const t = tarifs && tarifs[classe]; mats = asList(mats);
@@ -214,8 +223,19 @@
   const startMonth = () => mk(S.settings.debut);
   const schoolMonths = () => monthsRange(startMonth(), S.settings.finMois || '2027-07');
   const paysOf = (sid, pays) => (pays || S.payments).filter(p => p.studentId === sid);
-  const paidFor = (sid, mois, pays) => paysOf(sid, pays).filter(p => payOk(p) && p.mois === mois).reduce((s, p) => s + p.montant, 0);
-  const pendingFor = (sid, mois, pays) => paysOf(sid, pays).filter(p => p.statut === 'a_valider' && p.mois === mois).reduce((s, p) => s + p.montant, 0);
+  const paidFor = (sid, mois, pays) => paysOf(sid, pays).filter(p => payOk(p) && !isInsc(p) && p.mois === mois).reduce((s, p) => s + p.montant, 0);
+  const pendingFor = (sid, mois, pays) => paysOf(sid, pays).filter(p => p.statut === 'a_valider' && !isInsc(p) && p.mois === mois).reduce((s, p) => s + p.montant, 0);
+  const inscPaid = (sid, pays) => paysOf(sid, pays).filter(p => payOk(p) && isInsc(p)).reduce((s, p) => s + p.montant, 0);
+  const inscPending = (sid, pays) => paysOf(sid, pays).filter(p => p.statut === 'a_valider' && isInsc(p)).reduce((s, p) => s + p.montant, 0);
+  /* Échéance : la mensualité du mois M se paie au plus tard le J du mois M (J = 5 par défaut, réglable).
+     Pour un élève qui arrive en cours de mois, on lui laisse J jours après son entrée. */
+  const limitDay = () => Math.min(28, Math.max(1, +S.settings.jourLimite || 5));
+  function deadline(st, mois) {
+    const d = mois + '-' + ('0' + limitDay()).slice(-2);
+    const entree = [st.createdAt, S.settings.debut].filter(Boolean).sort().pop();
+    const grace = entree ? addDays(entree, limitDay()) : d;
+    return d > grace ? d : grace;
+  }
   function dueMonths(st) {
     if (!isActive(st)) return [];
     const from = maxMonth(st.moisDebut || startMonth(), startMonth());
@@ -223,17 +243,27 @@
     return monthsRange(from, curMonth() < fin ? curMonth() : fin);
   }
   function balance(st, pays) {
-    const months = dueMonths(st); const du = months.length * st.tarif;
+    const months = dueMonths(st); const inscDu = st.statut === 'abandon' ? 0 : st.tarif;
+    const du = months.length * st.tarif + inscDu;
     const paye = paysOf(st.id, pays).filter(payOk).reduce((s, p) => s + p.montant, 0);
-    return { du, paye, reste: Math.max(0, du - paye), late: months.filter(m => paidFor(st.id, m, pays) < st.tarif) };
+    const t = today();
+    return { du, paye, reste: Math.max(0, du - paye), inscReste: Math.max(0, inscDu - inscPaid(st.id, pays)),
+      late: months.filter(m => t > deadline(st, m) && paidFor(st.id, m, pays) + pendingFor(st.id, m, pays) < st.tarif) };
   }
   function monthState(st, mois, pays) {
     const p = paidFor(st.id, mois, pays), q = pendingFor(st.id, mois, pays);
     if (p >= st.tarif && st.tarif > 0) return ['Payé', 'ok', p];
     if (q > 0) return ['En validation', 'warn', p];
-    if (p > 0) return ['Partiel', 'warn', p];
-    if (mois > curMonth()) return ['À venir', 'neutral', 0];
-    return ['À payer', 'bad', 0];
+    if (mois > curMonth()) return ['À venir', 'neutral', p];
+    const lim = deadline(st, mois);
+    if (today() > lim) return [p > 0 ? 'Partiel · en retard' : 'En retard', 'bad', p];
+    return [(p > 0 ? 'Partiel · ' : '') + 'À payer avant le ' + dateLabel(lim), 'warn', p];
+  }
+  function inscState(st, pays) {
+    const p = inscPaid(st.id, pays);
+    if (p >= st.tarif && st.tarif > 0) return ['Payé', 'ok', p];
+    if (inscPending(st.id, pays) > 0) return ['En validation', 'warn', p];
+    return [p > 0 ? 'Partiel' : 'À payer à l\'entrée', 'bad', p];
   }
   function conflicts() {
     const out = []; const ss = S.sessions;
@@ -526,8 +556,18 @@
     const [sl, sc] = STATUTS[me.statut] || ['?', 'neutral'];
     const hist = S.payments.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const bal = balance(Object.assign({}, me, { statut: isActive(me) ? me.statut : 'actif' }));
+    // messages de l'admin + alertes de paiement automatiques
+    const avisHTML = avisOf(me).slice().reverse().slice(0, 3).map(a => `<div class="panel callout ${a.type === 'avertissement' ? 'bad' : 'warn'}"><h3>${a.type === 'avertissement' ? '⚠ Avertissement' : '🔔 Rappel'} de Sigma Cap <span class="small muted" style="font-weight:500">· ${esc(dateLabel(a.date))}</span></h3><p>${esc(a.texte).replace(/\n/g, '<br>')}</p></div>`).join('');
+    let alertes = '';
+    if (isActive(me)) {
+      const cm = curMonth();
+      if (bal.late.length) alertes += `<div class="panel callout bad"><h3>⚠ Retard de paiement</h3><p>${bal.late.map(m => `La mensualité de <b>${monthLabel(m)}</b> devait être payée au plus tard le <b>${dateLabel(deadline(me, m))}</b>.`).join('<br>')}</p><p>Reste à payer : <b>${fcfaLong(bal.reste)}</b>. Règle au plus vite, puis déclare ton paiement.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+      else if (months.includes(cm) && paidFor(me.id, cm) + pendingFor(me.id, cm) < me.tarif) alertes += `<div class="panel callout"><h3>Mensualité de ${monthLabel(cm)}</h3><p>À payer au plus tard le <b>${dateLabel(deadline(me, cm))}</b> : ${fcfaLong(me.tarif - paidFor(me.id, cm))}.</p><div><button class="btn sm primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+      if (bal.inscReste > 0 && !inscPending(me.id)) alertes += `<div class="panel callout warn"><h3>Frais d'inscription</h3><p>Il reste <b>${fcfaLong(bal.inscReste)}</b> à régler pour tes frais d'inscription.</p></div>`;
+    }
     let action = '';
-    if (me.statut === 'attente') action = `<div class="panel callout warn"><h3>Étape 2 · Paie ta première mensualité</h3><p>Montant : <b>${fcfaLong(me.tarif)}</b>. ${esc(st.paiement)}</p><p>Ensuite, clique sur « Déclarer un paiement » et indique la référence reçue par SMS. L'admin valide, puis te remet ton code de confirmation.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+    if (me.statut === 'attente') action = inscPending(me.id) ? `<div class="panel callout warn"><h3>Étape 2 · Frais d'inscription déclarés</h3><p>Ta déclaration est en attente de validation par l'admin. Il te remettra ensuite ton code de confirmation.</p></div>`
+      : `<div class="panel callout warn"><h3>Étape 2 · Paie tes frais d'inscription</h3><p>Montant : <b>${fcfaLong(me.tarif)}</b> (le même montant que ta mensualité). ${esc(st.paiement)}</p><p>Ensuite, clique sur « Déclarer un paiement », choisis « Frais d'inscription » et indique la référence reçue par SMS. L'admin valide, puis te remet ton code de confirmation.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
     else if (me.statut === 'code') action = `<form class="panel callout" id="cf" novalidate><h3>Étape 3 · Saisis ton code de confirmation</h3><p>Ton paiement est validé. Saisis le code que l'admin t'a remis (6 caractères).</p>
         <div class="toolbar"><input id="cf-code" class="grow" maxlength="8" autocapitalize="characters" autocomplete="one-time-code" placeholder="Ex. K7P4QM" style="letter-spacing:.15em;font-weight:700;text-transform:uppercase"><button class="btn primary" type="submit">Confirmer</button></div><p class="err" id="cf-err" hidden></p></form>`;
     else if (me.statut === 'actif') action = `<div class="panel callout ok"><h3>Inscription confirmée</h3><p>Ta place est réservée. Rendez-vous ${esc(dayName(st.debut) + ' ' + dateLabel(st.debut))} · ${esc(st.lieu)}.</p></div>`;
@@ -540,12 +580,13 @@
           <div class="kpi ${bal.reste ? 'alert' : ''}"><span class="l">Reste à payer à ce jour</span><span class="v">${fcfa(bal.reste)}</span><span class="s">${bal.late.length ? bal.late.length + ' mois en retard' : 'À jour'}</span></div>
           <div class="kpi"><span class="l">Statut</span><span class="v" style="font-size:1.1rem"><span class="pill ${sc}">${sl}</span></span><span class="s">N° ${esc(me.num)}</span></div>
         </div>
-        ${action}
+        ${avisHTML}${alertes}${action}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
-          <div class="tbl-wrap"><table><thead><tr><th>Mois</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
+          <div class="tbl-wrap"><table><thead><tr><th>Échéance</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
+          ${(() => { const [l, c, p] = inscState(me); return `<tr><td><b>Frais d'inscription</b></td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(me.tarif)}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; })()}
           ${months.map(m => { const [l, c, p] = monthState(me, m); return `<tr><td>${monthLabel(m)}</td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(me.tarif)}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}
           </tbody></table></div></div>
-        <div class="panel"><h3>Mes paiements déclarés</h3>${hist.length ? `<div class="tbl-wrap"><table><thead><tr><th>Mois payé</th><th>Mode</th><th class="n">Montant</th><th>État</th></tr></thead><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${monthLabel(p.mois)}<span class="sub">le ${esc(dateLabel(p.date))}</span></td><td>${esc(p.mode)}${p.ref ? `<span class="sub num">${esc(p.ref)}</span>` : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement pour l\'instant.</p>'}</div>
+        <div class="panel"><h3>Mes paiements déclarés</h3>${hist.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objet</th><th>Mode</th><th class="n">Montant</th><th>État</th></tr></thead><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${payLabel(p)}<span class="sub">le ${esc(dateLabel(p.date))}</span></td><td>${esc(p.mode)}${p.ref ? `<span class="sub num">${esc(p.ref)}</span>` : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement pour l\'instant.</p>'}</div>
         <div class="panel"><h3>Mon emploi du temps · ${esc(me.classe)}</h3><div class="week">${weekHTML(S.sessions.filter(s => s.classes.includes(me.classe) && me.matieres.includes(s.matiere)), false)}</div></div>
         <div class="panel"><h3>Mes informations</h3><dl class="kv">
           <dt>École d'origine</dt><dd>${esc(me.etablissement) || '—'}</dd><dt>Dernières notes</dt><dd>${esc(notesTxt(me))}</dd>
@@ -565,10 +606,12 @@
   function declareModal() {
     const me = S.me;
     const months = monthsRange(maxMonth(me.moisDebut || startMonth(), startMonth()), S.settings.finMois || '2027-07');
-    const first = months.find(m => paidFor(me.id, m) + pendingFor(me.id, m) < me.tarif) || months[0];
+    const inscLeft = Math.max(0, me.tarif - inscPaid(me.id) - inscPending(me.id));
+    const first = inscLeft > 0 ? 'insc' : (months.find(m => paidFor(me.id, m) + pendingFor(me.id, m) < me.tarif) || months[0]);
+    const leftFor = v => v === 'insc' ? inscLeft : Math.max(0, me.tarif - paidFor(me.id, v) - pendingFor(me.id, v));
     openModal('Déclarer un paiement', `<form class="grid2" novalidate>
-      <label class="f">Mois payé<select id="d-mois">${months.map(m => `<option value="${m}" ${m === first ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</select></label>
-      <label class="f">Montant (FCFA)<input id="d-mt" type="number" min="0" step="500" value="${Math.max(0, me.tarif - paidFor(me.id, first) - pendingFor(me.id, first)) || me.tarif}"></label>
+      <label class="f">Objet du paiement<select id="d-mois">${inscLeft > 0 ? `<option value="insc" ${first === 'insc' ? 'selected' : ''}>Frais d'inscription</option>` : ''}${months.map(m => `<option value="${m}" ${m === first ? 'selected' : ''}>Mensualité · ${monthLabel(m)}</option>`).join('')}</select></label>
+      <label class="f">Montant (FCFA)<input id="d-mt" type="number" min="0" step="500" value="${leftFor(first) || me.tarif}"></label>
       <label class="f">Mode<select id="d-mode">${MODES_ELEVE.map(m => `<option>${m}</option>`).join('')}</select></label>
       <label class="f" id="d-refw">Référence de la transaction <span class="h">dans le SMS Wave / Orange Money</span><input id="d-ref" autocapitalize="characters"></label>
       <label class="f" style="grid-column:1/-1">Note <span class="h">facultatif · ex. « remis à M. Faye »</span><input id="d-note"></label>
@@ -576,8 +619,10 @@
       `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="d-save">Envoyer la déclaration</button>`);
     const sync = () => { $('#d-refw').hidden = $('#d-mode').value === 'Espèces'; };
     $('#d-mode').addEventListener('change', sync); sync();
+    $('#d-mois').addEventListener('change', () => { $('#d-mt').value = leftFor($('#d-mois').value) || me.tarif; });
     $('#d-save').addEventListener('click', async () => {
-      const p = { mois: $('#d-mois').value, montant: +$('#d-mt').value || 0, mode: $('#d-mode').value, ref: $('#d-ref').value.trim(), note: $('#d-note').value.trim() };
+      const obj = $('#d-mois').value, insc = obj === 'insc', note = $('#d-note').value.trim();
+      const p = { mois: insc ? months[0] : obj, montant: +$('#d-mt').value || 0, mode: $('#d-mode').value, ref: $('#d-ref').value.trim(), note: insc ? (INSC_TAG + ' ' + note).trim() : note };
       const er = $('#d-err');
       if (p.montant <= 0) { er.textContent = 'Indique le montant payé.'; er.hidden = false; return; }
       if (p.mode !== 'Espèces' && p.ref.length < 4) { er.textContent = 'Indique la référence de la transaction (dans le SMS de confirmation).'; er.hidden = false; return; }
@@ -670,7 +715,7 @@
     const seuils = S.settings.seuils || {};
     const byClass = S.settings.classes.map(c => [c, S.students.filter(s => s.classe === c && s.statut !== 'abandon').length, +(seuils[c] || 6)]);
     const maxC = Math.max(1, ...byClass.map(x => Math.max(x[1], x[2])));
-    const late = bal.filter(([, b]) => b.reste > 0).sort((a, b) => b[1].reste - a[1].reste).slice(0, 6);
+    const late = bal.filter(([, b]) => b.late.length || b.inscReste).sort((a, b) => b[1].late.length - a[1].late.length || b[1].reste - a[1].reste).slice(0, 8);
     const hasEx = S.students.some(s => s.exemple);
     return `
       ${hasEx ? `<div class="warnbox">Les élèves marqués « exemple » servent à montrer l'application. Supprimez-les depuis l'onglet Élèves avant de démarrer.</div>` : ''}
@@ -678,7 +723,7 @@
         <div class="kpi"><span class="l">Élèves inscrits (payé)</span><span class="v">${act.length}</span><span class="s">${pend.length} sans paiement · ${codeWait.length} code non saisi</span></div>
         <div class="kpi ${toVal.length ? 'alert' : ''}"><span class="l">Paiements à valider</span><span class="v">${toVal.length}</span><span class="s">${fcfa(toVal.reduce((a, p) => a + p.montant, 0))} déclarés par les élèves</span></div>
         <div class="kpi"><span class="l">Encaissé · ${monthLabel(m)}</span><span class="v">${fcfa(encMois)}</span><span class="s">sur ${fcfa(attendu)} attendus</span></div>
-        <div class="kpi ${impayes ? 'alert' : ''}"><span class="l">Impayés cumulés</span><span class="v">${fcfa(impayes)}</span><span class="s">${bal.filter(([, b]) => b.reste > 0).length} élève(s) en retard</span></div>
+        <div class="kpi ${impayes ? 'alert' : ''}"><span class="l">Impayés cumulés</span><span class="v">${fcfa(impayes)}</span><span class="s">${bal.filter(([, b]) => b.late.length).length} élève(s) en retard après le ${limitDay()}</span></div>
       </div>
       ${toVal.length ? `<div class="warnbox">${toVal.length} paiement${toVal.length > 1 ? 's' : ''} déclaré${toVal.length > 1 ? 's' : ''} par les élèves attend${toVal.length > 1 ? 'ent' : ''} votre validation. <button class="btn sm" data-act="tab" data-v="paiements">Valider</button></div>` : ''}
       ${al.map(a => `<div class="warnbox">${a.type === 'groupe' ? 'Nouveau prof à prévoir · ' : 'Poste à pourvoir · '}${esc(a.msg)}</div>`).join('')}
@@ -689,7 +734,7 @@
         <div class="panel"><h3>Répartition · depuis la rentrée</h3><p class="small muted">Net à partager ${fcfa(fin.net)} · ${String(fin.totalParts).replace('.', ',')} parts</p>
           <div class="tbl-wrap" style="border:0"><table><tbody>${fin.rows.map(r => `<tr><td>${esc(r.nom)}</td><td class="n">${String(r.parts).replace('.', ',')} part</td><td class="n"><b>${fcfa(r.share)}</b></td></tr>`).join('')}</tbody></table></div>
           <div><button class="btn sm" data-act="tab" data-v="repartition">Voir le détail</button></div></div>
-        <div class="panel"><h3>À relancer</h3>${late.length ? `<div class="tbl-wrap" style="border:0"><table><tbody>${late.map(([s, b]) => `<tr><td>${esc(fullName(s))}<span class="sub">${esc(s.classe)} · ${b.late.length} mois</span></td><td class="n">${fcfa(b.reste)}</td><td class="n">${waLink(s, b.late[b.late.length - 1] || m, b.reste)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Tout le monde est à jour.</p>'}</div>
+        <div class="panel"><h3>À relancer · échéance le ${limitDay()} du mois</h3>${late.length ? `<div class="tbl-wrap" style="border:0"><table><tbody>${late.map(([s, b]) => `<tr><td>${esc(fullName(s))}<span class="sub">${esc(s.classe)} · ${[b.late.length ? b.late.length + ' mois en retard' : '', b.inscReste ? 'inscription non réglée' : ''].filter(Boolean).join(' · ')}</span></td><td class="n">${fcfa(b.reste)}</td><td class="n"><div class="row-actions">${waLink(s, b.late[b.late.length - 1] || m, b.reste)}<button class="btn sm" data-act="avis" data-id="${esc(s.id)}">Message</button></div></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Tout le monde est à jour.</p>'}</div>
         <div class="panel"><h3>Inscrits sans paiement</h3>${pend.length ? `<div class="tbl-wrap" style="border:0"><table><tbody>${pend.slice(0, 6).map(s => `<tr><td>${esc(fullName(s))}<span class="sub">${esc(s.num)} · ${esc(s.classe)} · ${fcfa(s.tarif)}CFA · ${esc(s.telParent)}</span></td><td class="n"><button class="btn sm primary" data-act="pay" data-id="${esc(s.id)}">Encaisser</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Aucun.</p>'}
           <p class="muted small">Le premier paiement validé crée le code de confirmation à remettre à l'élève.</p></div>
       </div>`;
@@ -761,13 +806,14 @@
         <label class="f">${isNew ? 'Mot de passe de son espace' : 'Nouveau mot de passe'} <span class="h">${isNew ? 'obligatoire · à lui communiquer' : (s.hasPwd ? 'laisser vide pour garder l\'actuel' : 'aucun mot de passe pour l\'instant')}</span><input id="s-pw" autocomplete="new-password" placeholder="${isNew ? 'ex. ses 4 derniers chiffres' : ''}"></label>
         <label class="f" style="grid-column:1/-1">Notes internes<textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></label>
       </form>
-      ${isNew ? '<p class="infobox small">Après « Inscrire », la fenêtre d\'encaissement s\'ouvre : le premier paiement validé crée le code de confirmation.</p>' : codeBox(s)}
+      ${isNew ? '<p class="infobox small">Après « Inscrire », la fenêtre d\'encaissement s\'ouvre pour les frais d\'inscription (même montant que la mensualité) : le premier paiement validé crée le code de confirmation.</p>' : codeBox(s)}
       ${isNew ? '' : `<div class="panel" style="padding:12px"><h3 style="font-size:1rem">Paiements</h3>
-        <p class="small muted">Dû à ce jour ${fcfa(b.du)} · validé ${fcfa(b.paye)} · <b style="color:${b.reste ? 'var(--bad)' : 'var(--ok)'}">reste ${fcfa(b.reste)}</b></p>
-        ${hist.length ? `<div class="tbl-wrap"><table><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${monthLabel(p.mois)}</td><td>${esc(p.mode)}${p.ref ? ' · ' + esc(p.ref) : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="small muted">Aucun paiement enregistré.</p>'}
-      </div>`}
+        <p class="small muted">Dû à ce jour (inscription comprise) ${fcfa(b.du)} · validé ${fcfa(b.paye)} · <b style="color:${b.reste ? 'var(--bad)' : 'var(--ok)'}">reste ${fcfa(b.reste)}</b>${b.late.length ? ` · <b style="color:var(--bad)">${b.late.length} mois en retard</b>` : ''}${b.inscReste ? ' · inscription non réglée' : ''}</p>
+        ${hist.length ? `<div class="tbl-wrap"><table><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${payLabel(p)}</td><td>${esc(p.mode)}${p.ref ? ' · ' + esc(p.ref) : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td><td>${!isInsc(p) && b.inscReste ? `<button class="btn sm" data-act="mark-insc" data-id="${esc(p.id)}" title="Ce paiement correspond aux frais d'inscription">→ inscription</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="small muted">Aucun paiement enregistré.</p>'}
+      </div>
+      ${avisOf(s).length ? `<div class="panel" style="padding:12px"><h3 style="font-size:1rem">Messages affichés dans son espace</h3><div class="tbl-wrap"><table><tbody>${avisOf(s).slice().reverse().map(a => `<tr><td><span class="pill ${a.type === 'avertissement' ? 'bad' : 'warn'}">${a.type === 'avertissement' ? 'Avertissement' : 'Rappel'}</span><span class="sub">${esc(dateLabel(a.date))}${a.par ? ' · ' + esc(a.par) : ''}</span></td><td class="small">${esc(a.texte)}</td><td><button class="btn sm danger" data-act="del-avis" data-id="${esc(s.id)}" data-v="${esc(a.id)}">Retirer</button></td></tr>`).join('')}</tbody></table></div></div>` : ''}`}
       <p class="err" id="s-err" hidden></p>`,
-      `${isNew ? '' : `<button class="btn danger left" data-act="del-student" data-id="${esc(s.id)}">Supprimer</button><button class="btn" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>`}
+      `${isNew ? '' : `<button class="btn danger left" data-act="del-student" data-id="${esc(s.id)}">Supprimer</button><button class="btn" data-act="avis" data-id="${esc(s.id)}">Message</button><button class="btn" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>`}
        <button class="btn" data-act="close">Annuler</button><button class="btn primary" id="s-save">${isNew ? 'Inscrire' : 'Enregistrer'}</button>`);
     let tarifTouched = !isNew && s.tarif !== prix(s.classe, s.matieres, S.settings.tarifs);
     let initDone = false;
@@ -831,8 +877,8 @@
     const name = id => { const s = S.students.find(x => x.id === id); return s ? fullName(s) + ' · ' + s.classe : 'élève supprimé'; };
     return `${toVal.length ? `<div class="panel" style="border-color:var(--warn)"><h3>À valider · déclarés par les élèves</h3>
         <p class="small muted">Vérifiez la référence dans votre historique Wave / Orange Money, ou que vous avez bien reçu les espèces.</p>
-        <div class="tbl-wrap"><table><thead><tr><th>Déclaré le</th><th>Élève</th><th>Mois</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>
-        ${toVal.map(p => `<tr><td>${esc(dateLabel(p.date))}</td><td><b>${esc(name(p.studentId))}</b>${p.note ? `<span class="sub">${esc(p.note)}</span>` : ''}</td><td>${monthLabel(p.mois)}</td><td>${esc(p.mode)}</td><td class="num"><b>${esc(p.ref) || '—'}</b></td><td class="n">${fcfa(p.montant)}</td>
+        <div class="tbl-wrap"><table><thead><tr><th>Déclaré le</th><th>Élève</th><th>Objet</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>
+        ${toVal.map(p => `<tr><td>${esc(dateLabel(p.date))}</td><td><b>${esc(name(p.studentId))}</b>${payNote(p) ? `<span class="sub">${esc(payNote(p))}</span>` : ''}</td><td>${payLabel(p)}</td><td>${esc(p.mode)}</td><td class="num"><b>${esc(p.ref) || '—'}</b></td><td class="n">${fcfa(p.montant)}</td>
           <td><div class="row-actions"><button class="btn sm go" data-act="val-pay" data-id="${esc(p.id)}">Valider</button><button class="btn sm danger" data-act="rej-pay" data-id="${esc(p.id)}">Rejeter</button></div></td></tr>`).join('')}
         </tbody></table></div></div>` : ''}
       <div class="toolbar">
@@ -851,21 +897,21 @@
         <tbody>${rows.map(([s, [l, c, p]]) => `<tr>
           <td><b>${esc(fullName(s))}</b><span class="sub num">${esc(s.telParent)}</span></td><td>${esc(s.classe)}</td>
           <td class="n">${fcfa(s.tarif)}</td><td class="n">${fcfa(p)}</td><td class="n">${fcfa(Math.max(0, s.tarif - p))}</td>
-          <td><span class="pill ${c}">${l}</span></td>
-          <td><div class="row-actions">${c !== 'ok' ? `<button class="btn sm primary" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>${waLink(s, m, s.tarif - p)}` : ''}</div></td></tr>`).join('')}</tbody></table></div>`
+          <td><span class="pill ${c}">${l}</span>${inscPaid(s.id) < s.tarif ? '<span class="sub">inscription non réglée</span>' : ''}</td>
+          <td><div class="row-actions">${c !== 'ok' ? `<button class="btn sm primary" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>${waLink(s, m, s.tarif - p)}<button class="btn sm" data-act="avis" data-id="${esc(s.id)}">Message</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`
         : '<div class="tbl-wrap"><p class="empty-state">Aucun élève inscrit pour ce mois.</p></div>'}
       <div class="panel"><h3>Journal · ${monthLabel(m)}</h3>
-        ${journal.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Élève</th><th>Mode</th><th class="n">Montant</th><th>État</th><th></th></tr></thead><tbody>${journal.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${esc(dateLabel(p.date))}</td><td>${esc(name(p.studentId))}${p.ref ? `<span class="sub">réf. ${esc(p.ref)}</span>` : ''}</td><td>${esc(p.mode)}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span>${p.validePar ? `<span class="sub">${p.statut === 'rejete' ? 'rejeté' : 'validé'} par ${esc(p.validePar)}</span>` : ''}</td><td><div class="row-actions">${payOk(p) ? `<button class="btn sm" data-act="receipt" data-id="${esc(p.id)}">Reçu</button>` : ''}<button class="btn sm danger" data-act="del-payment" data-id="${esc(p.id)}">Supprimer</button></div></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement ce mois-ci.</p>'}
+        ${journal.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Élève</th><th>Mode</th><th class="n">Montant</th><th>État</th><th></th></tr></thead><tbody>${journal.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${esc(dateLabel(p.date))}</td><td>${esc(name(p.studentId))}${isInsc(p) ? '<span class="sub"><b>Frais d\'inscription</b></span>' : ''}${p.ref ? `<span class="sub">réf. ${esc(p.ref)}</span>` : ''}</td><td>${esc(p.mode)}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span>${p.validePar ? `<span class="sub">${p.statut === 'rejete' ? 'rejeté' : 'validé'} par ${esc(p.validePar)}</span>` : ''}</td><td><div class="row-actions">${payOk(p) ? `<button class="btn sm" data-act="receipt" data-id="${esc(p.id)}">Reçu</button>` : ''}<button class="btn sm danger" data-act="del-payment" data-id="${esc(p.id)}">Supprimer</button></div></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement ce mois-ci.</p>'}
       </div>`;
   }
   function payModal(studentId) {
     const opts = S.students.filter(s => s.statut !== 'abandon').sort((a, b) => a.nom.localeCompare(b.nom));
     if (!opts.length) { toast('Inscrivez d\'abord un élève'); return; }
     const st = (studentId && S.students.find(s => s.id === studentId)) || opts[0];
-    const firstUnpaid = s => { const ms = monthsRange(maxMonth(s.moisDebut || startMonth(), startMonth()), S.settings.finMois); return ms.find(m => paidFor(s.id, m) < s.tarif) || S.payMonth || ms[0]; };
+    const firstUnpaid = s => { if (inscPaid(s.id) < s.tarif) return 'insc'; const ms = monthsRange(maxMonth(s.moisDebut || startMonth(), startMonth()), S.settings.finMois); return ms.find(m => paidFor(s.id, m) < s.tarif) || S.payMonth || ms[0]; };
     openModal('Encaisser un paiement', `<form class="grid2" novalidate>
         <label class="f" style="grid-column:1/-1">Élève<select id="p-st">${opts.map(s => `<option value="${esc(s.id)}" ${s.id === st.id ? 'selected' : ''}>${esc(s.nom.toUpperCase() + ' ' + s.prenom)} · ${esc(s.classe)}${s.statut === 'attente' ? ' (sans paiement)' : ''}</option>`).join('')}</select></label>
-        <label class="f">Mois réglé<select id="p-mois">${schoolMonths().map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('')}</select></label>
+        <label class="f">Objet<select id="p-mois"><option value="insc">Frais d'inscription</option>${schoolMonths().map(m => `<option value="${m}">Mensualité · ${monthLabel(m)}</option>`).join('')}</select></label>
         <label class="f">Montant (FCFA)<input id="p-montant" type="number" min="0" step="500"></label>
         <label class="f">Mode de paiement<select id="p-mode">${MODES_ADMIN.map(m => `<option>${m}</option>`).join('')}</select></label>
         <label class="f">Date<input id="p-date" type="date" value="${today()}"></label>
@@ -874,15 +920,16 @@
       `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="p-save">Enregistrer · paiement validé</button>`);
     const fillAmt = () => {
       const s = S.students.find(x => x.id === $('#p-st').value); const m = $('#p-mois').value;
+      if (m === 'insc') { $('#p-montant').value = Math.max(0, s.tarif - inscPaid(s.id)) || s.tarif; $('#p-info').textContent = `Frais d'inscription ${fcfaLong(s.tarif)} (même montant que la mensualité) · déjà validé : ${fcfaLong(inscPaid(s.id))}`; return; }
       $('#p-montant').value = Math.max(0, s.tarif - paidFor(s.id, m)) || s.tarif;
-      $('#p-info').textContent = `Mensualité ${fcfaLong(s.tarif)} · déjà validé pour ${monthLabel(m)} : ${fcfaLong(paidFor(s.id, m))}`;
+      $('#p-info').textContent = `Mensualité ${fcfaLong(s.tarif)} · à payer avant le ${dateLabel(deadline(s, m))} · déjà validé pour ${monthLabel(m)} : ${fcfaLong(paidFor(s.id, m))}`;
     };
     const fill = () => { const s = S.students.find(x => x.id === $('#p-st').value); $('#p-mois').value = firstUnpaid(s); fillAmt(); };
     $('#p-st').addEventListener('change', fill); $('#p-mois').addEventListener('change', fillAmt); fill();
     $('#p-save').addEventListener('click', async () => {
       const s = S.students.find(x => x.id === $('#p-st').value); const before = s.statut;
-      const note = $('#p-note').value.trim();
-      const p = { id: uid('pay'), studentId: s.id, mois: $('#p-mois').value, montant: +$('#p-montant').value || 0, mode: $('#p-mode').value, date: $('#p-date').value || today(), ref: $('#p-mode').value === 'Espèces' ? '' : note, note, statut: 'valide', declarePar: 'admin', createdAt: today() };
+      const note = $('#p-note').value.trim(), insc = $('#p-mois').value === 'insc';
+      const p = { id: uid('pay'), studentId: s.id, mois: insc ? maxMonth(s.moisDebut || startMonth(), startMonth()) : $('#p-mois').value, montant: +$('#p-montant').value || 0, mode: $('#p-mode').value, date: $('#p-date').value || today(), ref: $('#p-mode').value === 'Espèces' ? '' : note, note: insc ? (INSC_TAG + ' ' + note).trim() : note, statut: 'valide', declarePar: 'admin', createdAt: today() };
       if (p.montant <= 0) { const e = $('#p-err'); e.textContent = 'Indiquez un montant supérieur à 0.'; e.hidden = false; return; }
       $('#p-save').disabled = true;
       const r = await mutate('save', { kind: 'payments', item: p }, 'Paiement enregistré');
@@ -894,7 +941,7 @@
   }
   function receiptText(p) {
     const s = S.students.find(x => x.id === p.studentId) || { prenom: '', nom: '?', classe: '', num: '' };
-    return `SIGMA CAP — Vers la réussite\nReçu de paiement\n\nÉlève : ${fullName(s)} (${s.num})\nClasse : ${s.classe}\nMois : ${monthLabel(p.mois)}\nMontant : ${fcfaLong(p.montant)}\nMode : ${p.mode}${p.ref ? ' · réf. ' + p.ref : ''}\nDate : ${dateLabel(p.date)}\nValidé par : ${p.validePar || ''}\n\nMerci de votre confiance.`;
+    return `SIGMA CAP — Vers la réussite\nReçu de paiement\n\nÉlève : ${fullName(s)} (${s.num})\nClasse : ${s.classe}\nObjet : ${isInsc(p) ? "Frais d'inscription" : 'Mensualité de ' + monthLabel(p.mois)}\nMontant : ${fcfaLong(p.montant)}\nMode : ${p.mode}${p.ref ? ' · réf. ' + p.ref : ''}\nDate : ${dateLabel(p.date)}\nValidé par : ${p.validePar || ''}\n\nMerci de votre confiance.`;
   }
   function receiptModal(pid) {
     const p = S.payments.find(x => x.id === pid); if (!p) return;
@@ -1052,6 +1099,7 @@
           <label class="f">Dernier mois facturé<input id="g-fin" type="month" value="${esc(st.finMois)}"></label>
           <label class="f">Lieu<input id="g-lieu" value="${esc(st.lieu)}"></label>
           <label class="f">Jours (affichage)<input id="g-jours" value="${esc(st.jours)}"></label>
+          <label class="f">Date limite de paiement <span class="h">jour du mois (la mensualité du mois se paie au plus tard ce jour-là)</span><input id="g-jl" type="number" min="1" max="28" value="${limitDay()}"></label>
           <label class="f">Inscriptions en ligne<select id="g-open"><option value="1" ${st.inscriptionsOuvertes ? 'selected' : ''}>Ouvertes</option><option value="0" ${st.inscriptionsOuvertes ? '' : 'selected'}>Fermées</option></select></label>
           ${st.contacts.map((c, i) => `<label class="f">Contact ${i + 1}<input id="g-cn${i}" value="${esc(c.nom)}"></label><label class="f">Téléphone ${i + 1}<input id="g-ct${i}" value="${esc(c.tel)}"></label>`).join('')}
         </div>
@@ -1075,7 +1123,7 @@
     $('#prm').addEventListener('submit', async e => {
       e.preventDefault();
       const st = clone(S.settings); const v = i => $(i).value.trim();
-      Object.assign(st, { annee: v('#g-annee'), debut: v('#g-debut'), finMois: v('#g-fin'), lieu: v('#g-lieu'), jours: v('#g-jours'), inscriptionsOuvertes: v('#g-open') === '1', relance: $('#g-rel').value, paiement: $('#g-pay').value.trim() });
+      Object.assign(st, { annee: v('#g-annee'), debut: v('#g-debut'), finMois: v('#g-fin'), lieu: v('#g-lieu'), jours: v('#g-jours'), inscriptionsOuvertes: v('#g-open') === '1', jourLimite: Math.min(28, Math.max(1, +v('#g-jl') || 5)), relance: $('#g-rel').value, paiement: $('#g-pay').value.trim() });
       st.contacts = st.contacts.map((c, i) => ({ nom: v('#g-cn' + i), tel: v('#g-ct' + i) }));
       st.seuils = st.seuils || {};
       st.classes.forEach((c, i) => {
@@ -1086,6 +1134,41 @@
         st.seuils[c] = Math.max(1, +$('#ts-' + i).value || 6);
       });
       if (await mutate('saveSettings', { settings: st }, 'Paramètres enregistrés')) renderPane();
+    });
+  }
+
+  /* ---------- rappels et avertissements ---------- */
+  function avisText(s, type) {
+    const b = balance(s);
+    const de = m => (/^[aeiouéèh]/i.test(monthLabel(m)) ? "d'" : 'de ') + monthLabel(m);
+    const mens = b.late.length === 1 ? 'la mensualité ' + de(b.late[0]) : b.late.length > 1 ? 'les mensualités ' + b.late.map(de).join(', ').replace(/, ([^,]*)$/, ' et $1') : '';
+    const quoi = [mens, b.inscReste ? "les frais d'inscription" : ''].filter(Boolean).join(' ainsi que ') || 'la mensualité ' + de(curMonth());
+    if (type === 'avertissement') return `Avertissement : malgré nos rappels, il reste toujours à régler pour ${fullName(s)} (${s.classe}) ${quoi}, soit ${fcfaLong(b.reste)}. Merci de régulariser sans délai ou de nous contacter.`;
+    return `Rappel : il reste à régler pour ${fullName(s)} (${s.classe}) ${quoi}, soit ${fcfaLong(b.reste)}. La mensualité se paie au plus tard le ${limitDay()} de chaque mois. Merci de régulariser rapidement.`;
+  }
+  function avisModal(id) {
+    const s = S.students.find(x => x.id === id); if (!s) return;
+    const b = balance(s); const tel = waNum(s.telParent || s.telEleve);
+    openModal('Message à ' + fullName(s), `<form class="grid2" novalidate>
+        <label class="f">Type<select id="a-type"><option value="rappel">Rappel</option><option value="avertissement" ${b.late.length > 1 ? 'selected' : ''}>Avertissement</option></select></label>
+        <div class="f"><span class="small muted">${b.late.length ? b.late.length + ' mois en retard' : 'Pas de mois en retard'}${b.inscReste ? ' · inscription non réglée' : ''} · reste ${fcfaLong(b.reste)}</span></div>
+        <label class="f" style="grid-column:1/-1">Message <span class="h">modifiable</span><textarea id="a-txt" rows="5"></textarea></label>
+      </form><p class="small muted">Le message s'affiche en haut de l'espace de l'élève (et du parent). Vous pouvez aussi l'envoyer par WhatsApp${tel ? ' au ' + esc(s.telParent || s.telEleve) : ''}.</p><p class="err" id="a-err" hidden></p>`,
+      `${tel ? '<a class="btn left" id="a-wa" target="_blank" rel="noopener" href="#">Envoyer aussi par WhatsApp</a>' : ''}<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="a-save">Afficher dans son espace</button>`);
+    const syncWa = () => { const a = $('#a-wa'); if (a) a.href = `https://wa.me/${tel}?text=${encodeURIComponent('Sigma Cap — ' + $('#a-txt').value)}`; };
+    const fillTxt = () => { $('#a-txt').value = avisText(s, $('#a-type').value); syncWa(); };
+    $('#a-type').addEventListener('change', fillTxt); $('#a-txt').addEventListener('input', syncWa); fillTxt();
+    $('#a-save').addEventListener('click', async () => {
+      const texte = $('#a-txt').value.trim(); const er = $('#a-err');
+      if (texte.length < 5) { er.textContent = 'Écrivez le message.'; er.hidden = false; return; }
+      const a = { id: uid('avis'), type: $('#a-type').value, texte, date: today(), par: S.me ? S.me.nom : '' };
+      const list = avisOf(s).concat(a).slice(-10);
+      $('#a-save').disabled = true;
+      const r = await mutate('save', { kind: 'students', item: { id: s.id, avis: JSON.stringify(list) } });
+      if (!r) { $('#a-save').disabled = false; return; }
+      const after = S.students.find(x => x.id === s.id);
+      if (LIVE && !avisOf(after).some(x => x.id === a.id)) { er.innerHTML = "Le serveur n'a pas gardé le message : il faut d'abord ajouter la colonne « avis » dans le script Google (voir les instructions de mise à jour)."; er.hidden = false; $('#a-save').disabled = false; return; }
+      closeModal(); renderAdmin(); toast('Message affiché dans son espace');
     });
   }
 
@@ -1143,6 +1226,16 @@
         break;
       }
       case 'receipt': receiptModal(id); break;
+      case 'avis': closeModal(); avisModal(id); break;
+      case 'del-avis': confirmThen(el, 'Confirmer', async () => {
+        const s = S.students.find(x => x.id === id); if (!s) return;
+        if (await mutate('save', { kind: 'students', item: { id, avis: JSON.stringify(avisOf(s).filter(a => a.id !== el.dataset.v)) } }, 'Message retiré')) { closeModal(); renderAdmin(); studentModal(id); }
+      }); break;
+      case 'mark-insc': {
+        const p = S.payments.find(x => x.id === id); if (!p) break;
+        if (await mutate('save', { kind: 'payments', item: { id, note: (INSC_TAG + ' ' + (p.note || '')).trim() } }, 'Paiement compté comme frais d\'inscription')) { closeModal(); renderAdmin(); studentModal(p.studentId); }
+        break;
+      }
       case 'copy-receipt': copy($('#rc-text').textContent); break;
       case 'del-payment': confirmThen(el, 'Confirmer', () => removeItem('payments', id, 'Paiement supprimé')); break;
       case 'new-expense': expenseModal(); break;
