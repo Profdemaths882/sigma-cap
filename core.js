@@ -61,6 +61,46 @@ var SigmaCore = (function () {
     if (t.pack && t.pack.matieres && key(t.pack.matieres) === key(mats)) return +t.pack.prix || 0;
     return sum(mats, function (m) { return t.seules[m]; });
   }
+  /* ---------- règle du premier mois (inscription en cours d'année) ----------
+     Mois de la rentrée (octobre) : inscrit avant le 15 → mois entier ; du 15 au 20 → moitié du mois ; après le 20 → rien ce mois-ci, on commence le mois suivant.
+     Mois suivants : inscrit jusqu'au 20 → mois entier ; après le 20 → on commence le mois suivant.
+     Chaque mois se paie au plus tard le 5 du mois suivant (réglage « jourLimite » de l'appli). */
+  function nextMonth(m) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) + 1; if (mo > 12) { mo = 1; y++; } return y + '-' + ('0' + mo).slice(-2); }
+  function planInscription(dateIso, cfg) {
+    cfg = cfg || {}; var m = mk(dateIso), debut = mk(cfg.debut || dateIso), day = +String(dateIso).slice(8, 10) || 1;
+    var jm = +(cfg.jourMoitie || 15), jr = +(cfg.jourReport || 20);
+    if (m < debut) return { moisDebut: debut, moitie: '' };
+    if (day > jr) return { moisDebut: nextMonth(m), moitie: '' };
+    if (m === debut && day >= jm) return { moisDebut: m, moitie: 'oui' };
+    return { moisDebut: m, moitie: '' };
+  }
+  function dueFor(s, mois) { var t = +s.tarif || 0; return (s.moitie === 'oui' && mois === s.moisDebut) ? Math.round(t / 2) : t; }
+
+  /* ---------- réduction « anciens élèves des cours de vacances » ---------- */
+  function vacPrix(classe, mats, settings) {
+    var v = settings && settings.tarifsVac && settings.tarifsVac[classe]; mats = asList(mats);
+    if (!v || !mats.length) return 0;
+    var t = settings.tarifs && settings.tarifs[classe];
+    var key = function (a) { return a.slice().sort().join('+'); };
+    if (t && t.pack && t.pack.matieres && key(t.pack.matieres) === key(mats) && +v.pack > 0) return +v.pack;
+    var total = 0;
+    for (var i = 0; i < mats.length; i++) { var p = +((v.seules || {})[mats[i]]); if (!(p > 0)) return 0; total += p; }
+    return total;
+  }
+  function normTokens(x) {
+    return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z\s-]/g, ' ').split(/[\s-]+/).filter(function (t) { return t.length > 1; });
+  }
+  // Reconnaît un nom de la liste malgré accents, majuscules, initiales (« Yaye F Thiam ») ou prénoms en plus / en moins.
+  function onVacList(prenom, nom, list) {
+    var mine = normTokens(prenom + ' ' + nom), last = normTokens(nom).pop();
+    if (mine.length < 2 || !last) return '';
+    return (list || []).filter(function (n) {
+      var ref = normTokens(n); if (ref.length < 2 || ref.indexOf(last) < 0) return false;
+      return ref.every(function (t) { return mine.indexOf(t) >= 0; }) || mine.every(function (t) { return ref.indexOf(t) >= 0; });
+    })[0] || '';
+  }
+  function pubSettings(s) { if (!s) return s; var c = {}; for (var k in s) if (k !== 'listeVac') c[k] = s[k]; return c; }
+
   function isActive(s) { return s.statut === 'actif' || s.statut === 'code'; }
   function payOk(p) { return !p.statut || p.statut === 'valide'; }
   function partsOf(t) { return t.parts === '' || t.parts == null ? 1 : +t.parts || 0; }
@@ -137,7 +177,15 @@ var SigmaCore = (function () {
       return st.read('sessions').some(function (x) { return x.prof === me.nom && asList(x.classes).indexOf(s.classe) >= 0 && (!mat || x.matiere === mat) && asList(s.matieres).indexOf(x.matiere) >= 0; });
     }
     function nextNum() { return 'SC26-' + ('000' + st.nextCounter()).slice(-4); }
-    function settings() { return st.getSettings(); }
+    function settings() {
+      var s = st.getSettings();
+      if (s) {
+        // Liste des anciens élèves des vacances et tarifs réduits : valeurs du serveur tant que les Paramètres n'en ont pas
+        if (!Array.isArray(s.listeVac) && st.defaultListeVac) s.listeVac = st.defaultListeVac.slice();
+        if (st.defaultTarifsVac) { s.tarifsVac = s.tarifsVac || {}; for (var c in st.defaultTarifsVac) if (!s.tarifsVac[c]) s.tarifsVac[c] = JSON.parse(JSON.stringify(st.defaultTarifsVac[c])); }
+      }
+      return s;
+    }
     function today() { return st.today(); }
 
     function session(req) {
@@ -171,13 +219,13 @@ var SigmaCore = (function () {
         var studs = d.students.filter(function (s) {
           return s.statut !== 'abandon' && mine.some(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && asList(s.matieres).indexOf(x.matiere) >= 0; });
         }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut, createdAt: s.createdAt, suivi: s.suivi || '' }; });
-        return { role: 'prof', me: pubTeacher(me), settings: d.settings, sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
+        return { role: 'prof', me: pubTeacher(me), settings: pubSettings(d.settings), sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
           finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d) };
       }
       var s = d.students.filter(function (x) { return x.id === sess.id; })[0];
       if (!s) throw new Error('Compte introuvable.');
       var meS = strip('students', s); delete meS.codeConf; delete meS.essais;
-      return { role: 'eleve', me: meS, settings: d.settings, sessions: d.sessions.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0; }),
+      return { role: 'eleve', me: meS, settings: pubSettings(d.settings), sessions: d.sessions.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0; }),
         teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }) };
     }
 
@@ -201,7 +249,14 @@ var SigmaCore = (function () {
       switch (a) {
         /* ----- public ----- */
         case 'config':
-          return { settings: settings(), sessions: st.read('sessions'), teachers: st.read('teachers').map(pubTeacher) };
+          return { settings: pubSettings(settings()), sessions: st.read('sessions'), teachers: st.read('teachers').map(pubTeacher) };
+
+        case 'checkVac': {
+          // Dit seulement si le nom tapé est sur la liste (la liste elle-même n'est jamais envoyée).
+          var hitV = onVacList(clean(req.prenom, 40), clean(req.nom, 40), cfg.listeVac);
+          var cv = clean(req.classe, 20), mv = asList(req.matieres);
+          return { eligible: !!hitV, prix: hitV && cv ? vacPrix(cv, mv, cfg) : 0, normal: cv && cfg.tarifs ? prix(cv, mv, cfg.tarifs) : 0 };
+        }
 
         case 'register': {
           if (cfg.inscriptionsOuvertes === false) throw new Error('Les inscriptions en ligne sont fermées.');
@@ -226,10 +281,13 @@ var SigmaCore = (function () {
           if (te.length === 9 && studs.some(function (x) { return digits(x.telEleve).slice(-9) === te; }))
             throw new Error("Ce numéro de téléphone d'élève est déjà utilisé. Connecte-toi à ton espace.");
           if (studs.filter(function (x) { return x.createdAt === today() && x.source === 'en_ligne'; }).length > 300) throw new Error("Trop d'inscriptions aujourd'hui, réessaie demain.");
-          var debut = mk(cfg.debut || today()), m0 = mk(today());
+          var plan = planInscription(today(), cfg);
+          var listed = onVacList(rec.prenom, rec.nom, cfg.listeVac);
+          var vp = listed ? vacPrix(rec.classe, rec.matieres, cfg) : 0;
+          rec.vacances = vp > 0 ? 'oui' : '';
           rec.id = 'el-' + st.uuid().replace(/-/g, '').slice(0, 10); rec.num = nextNum(); rec.createdAt = today();
-          rec.tarif = cfg.tarifs ? prix(rec.classe, rec.matieres, cfg.tarifs) : Math.max(0, Math.min(100000, +s.tarif || 0));
-          rec.moisDebut = m0 > debut ? m0 : debut; rec.statut = 'attente'; rec.source = 'en_ligne'; rec.notes = ''; rec.codeConf = ''; rec.confirmeLe = ''; rec.essais = 0;
+          rec.tarif = vp > 0 ? vp : cfg.tarifs ? prix(rec.classe, rec.matieres, cfg.tarifs) : Math.max(0, Math.min(100000, +s.tarif || 0));
+          rec.moisDebut = plan.moisDebut; rec.moitie = plan.moitie; rec.statut = 'attente'; rec.source = 'en_ligne'; rec.notes = ''; rec.codeConf = ''; rec.confirmeLe = ''; rec.essais = 0;
           setPwd(rec, pw); st.upsert('students', rec);
           var ses = { role: 'eleve', id: rec.id, nom: rec.prenom };
           return { num: rec.num, token: open(ses), data: dataFor(ses) };
@@ -379,7 +437,7 @@ var SigmaCore = (function () {
     };
   }
 
-  return { make: make, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
+  return { make: make, planInscription: planInscription, dueFor: dueFor, nextMonth: nextMonth, vacPrix: vacPrix, onVacList: onVacList, pubSettings: pubSettings, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
     isActive: isActive, payOk: payOk, partsOf: partsOf, MATIERES: MATIERES, CATS: CATS, mk: mk, asList: asList, digits: digits };
 })();
 if (typeof module !== 'undefined') module.exports = SigmaCore;

@@ -345,3 +345,6 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .pt-head button[aria-selected="false"] img { opacity: .55; filter: grayscale(.4); }
 .pt-body { display: flex; gap: 14px; align-items: center; }
 .pt-logo { height: 54px; width: auto; max-width: 90px; object-fit: contain; flex: none; background: #fff; border-radius: 8px; padding: 4px; }
+
+/* réduction cours de vacances, annoncée pendant l'inscription */
+.vacnote { margin: 0; background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: .95rem; }

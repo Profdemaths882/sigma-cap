@@ -273,15 +273,11 @@
   const pendingFor = (sid, mois, pays) => paysOf(sid, pays).filter(p => p.statut === 'a_valider' && !isInsc(p) && p.mois === mois).reduce((s, p) => s + p.montant, 0);
   const inscPaid = (sid, pays) => paysOf(sid, pays).filter(p => payOk(p) && isInsc(p)).reduce((s, p) => s + p.montant, 0);
   const inscPending = (sid, pays) => paysOf(sid, pays).filter(p => p.statut === 'a_valider' && isInsc(p)).reduce((s, p) => s + p.montant, 0);
-  /* Échéance : la mensualité du mois M se paie au plus tard le J du mois M (J = 5 par défaut, réglable).
-     Pour un élève qui arrive en cours de mois, on lui laisse J jours après son entrée. */
+  /* Échéance : la mensualité du mois M se paie à la fin du mois, au plus tard le J du mois suivant (J = 5 par défaut, réglable).
+     Montant du premier mois : voir C.planInscription (mois entier, moitié ou départ le mois suivant). */
   const limitDay = () => Math.min(28, Math.max(1, +S.settings.jourLimite || 5));
-  function deadline(st, mois) {
-    const d = mois + '-' + ('0' + limitDay()).slice(-2);
-    const entree = [st.createdAt, S.settings.debut].filter(Boolean).sort().pop();
-    const grace = entree ? addDays(entree, limitDay()) : d;
-    return d > grace ? d : grace;
-  }
+  const dueFor = C.dueFor;
+  function deadline(st, mois) { return C.nextMonth(mois) + '-' + ('0' + limitDay()).slice(-2); }
   function dueMonths(st) {
     if (!isActive(st)) return [];
     const from = maxMonth(st.moisDebut || startMonth(), startMonth());
@@ -290,15 +286,15 @@
   }
   function balance(st, pays) {
     const months = dueMonths(st); const inscDu = st.statut === 'abandon' ? 0 : st.tarif;
-    const du = months.length * st.tarif + inscDu;
+    const du = months.reduce((x, m) => x + dueFor(st, m), 0) + inscDu;
     const paye = paysOf(st.id, pays).filter(payOk).reduce((s, p) => s + p.montant, 0);
     const t = today();
     return { du, paye, reste: Math.max(0, du - paye), inscReste: Math.max(0, inscDu - inscPaid(st.id, pays)),
-      late: months.filter(m => t > deadline(st, m) && paidFor(st.id, m, pays) + pendingFor(st.id, m, pays) < st.tarif) };
+      late: months.filter(m => t > deadline(st, m) && paidFor(st.id, m, pays) + pendingFor(st.id, m, pays) < dueFor(st, m)) };
   }
   function monthState(st, mois, pays) {
-    const p = paidFor(st.id, mois, pays), q = pendingFor(st.id, mois, pays);
-    if (p >= st.tarif && st.tarif > 0) return ['Payé', 'ok', p];
+    const p = paidFor(st.id, mois, pays), q = pendingFor(st.id, mois, pays), d = dueFor(st, mois);
+    if (p >= d && d > 0) return ['Payé', 'ok', p];
     if (q > 0) return ['En validation', 'warn', p];
     if (mois > curMonth()) return ['À venir', 'neutral', p];
     const lim = deadline(st, mois);
@@ -418,7 +414,7 @@
         <li><div><b>Saisis ton code de confirmation</b><p>Après validation de ton paiement, l'admin te remet un code : saisis-le dans ton espace et ta place est réservée.</p></div></li>
       </ol>
       ${payTabsHTML()}
-      <p class="small muted" style="margin:-8px 0 22px">Ensuite, la mensualité se paie chaque mois, au plus tard le ${limitDay()} du mois.</p>
+      <p class="small muted" style="margin:-8px 0 22px">Ensuite, chaque mensualité se paie à la fin du mois, au plus tard le ${limitDay()} du mois suivant. Pour octobre : inscrit avant le 15, tu paies le mois entier ; du 15 au 20, la moitié ; après le 20, tu commences en novembre.</p>
       <div id="reg-zone">${st.inscriptionsOuvertes ? regFormHTML() : '<div class="infobox">Les inscriptions en ligne sont fermées pour le moment. Contactez-nous par téléphone.</div>'}</div>
       <div class="infobox" style="margin-top:18px">Déjà inscrit ? <a href="#espace"><b>Connecte-toi à ton espace</b></a>. Une question ? Appelez ${st.contacts.map(c => `<b>${esc(c.nom)}</b> au <b class="num">${esc(c.tel)}</b>`).join(' ou ')}.</div>
     </div></section>
@@ -478,6 +474,7 @@
         <div class="grid2">
           <label class="f">Prénom<input id="r-prenom" autocomplete="given-name"></label>
           <label class="f">Nom<input id="r-nom" autocomplete="family-name"></label>
+          <p class="vacnote" id="r-vac1" hidden style="grid-column:1/-1"></p>
           <label class="f">Sexe<select id="r-sexe"><option value="F">Fille</option><option value="M">Garçon</option></select></label>
           <label class="f">Classe<select id="r-classe"><option value="">Choisir…</option>${S.settings.classes.map(c => `<option>${esc(c)}</option>`).join('')}</select></label>
           <label class="f">École d'origine<input id="r-etab" placeholder="Ex. Lycée Kennedy"></label>
@@ -500,6 +497,7 @@
       <fieldset><legend>La formule</legend>
         <div class="chips" id="r-mats"><span class="muted">Choisis d'abord ta classe.</span></div>
         <div class="quote"><span id="r-form" class="muted">Aucune matière choisie</span><span class="amt" id="r-prix">0 F</span></div>
+        <p class="vacnote" id="r-vac" hidden></p>
       </fieldset>
       <fieldset><legend id="r-leg-sp">Mon espace élève</legend>
         <div class="grid2">
@@ -530,10 +528,30 @@
         box.innerHTML = ms.length ? ms.map(m => `<label class="chk"><input type="checkbox" name="mat" value="${m}" ${(prev.length ? prev.includes(m) : pack.includes(m)) ? 'checked' : ''}> ${MAT_LABEL[m]}</label>`).join('') : '<span class="muted">Choisis d\'abord ta classe.</span>';
       }
       const mats = $$('input[name=mat]:checked', box).map(i => i.value);
-      $('#r-prix').textContent = fcfa(prix(c, mats, S.settings.tarifs)) + 'CFA / mois';
-      $('#r-form').textContent = mats.length ? formule(c, mats, S.settings.tarifs) : 'Aucune matière choisie';
+      const vp = vac.eligible && vac.key === vacKey() ? vac.prix : 0, normal = prix(c, mats, S.settings.tarifs);
+      $('#r-prix').innerHTML = vp && vp < normal ? `<s class="muted" style="font-size:.6em">${fcfa(normal)}</s> ${fcfa(vp)}CFA / mois` : fcfa(normal) + 'CFA / mois';
+      $('#r-form').textContent = mats.length ? formule(c, mats, S.settings.tarifs) + (vp ? ' · tarif cours de vacances' : '') : 'Aucune matière choisie';
+      const msg = vac.eligible && vac.key === vacKey() ? (vp && vp < normal
+        ? `🎉 ${esc(v1('#r-prenom'))}, tu as suivi nos cours de vacances : tu bénéficies d'une réduction. Ta mensualité passe de <b>${fcfa(normal)}</b> à <b>${fcfa(vp)}</b>.`
+        : `🎉 ${esc(v1('#r-prenom'))}, tu as suivi nos cours de vacances : tu as droit au tarif réduit${c ? ' (choisis le pack de ta classe pour en profiter)' : ' (choisis ta classe pour voir le montant)'}.`) : '';
+      ['#r-vac1', '#r-vac'].forEach(id => { $(id).innerHTML = msg; $(id).hidden = !msg; });
     };
-    f.addEventListener('change', upd); upd();
+    // Réduction « cours de vacances » : le serveur dit si le nom tapé est sur la liste (la liste n'est jamais envoyée au navigateur)
+    const v1 = id => $(id).value.trim();
+    const vacKey = () => [v1('#r-prenom'), v1('#r-nom'), $('#r-classe').value, $$('input[name=mat]:checked', f).map(i => i.value).join('+')].join('|').toLowerCase();
+    const vac = { key: '', eligible: false, prix: 0 }; let vacT = null;
+    const checkVac = () => {
+      clearTimeout(vacT);
+      vacT = setTimeout(async () => {
+        if (!f.isConnected) return; // la page a changé entre-temps
+        const k = vacKey(); if (k === vac.key) return;
+        if (v1('#r-prenom').length < 2 || v1('#r-nom').length < 2) { Object.assign(vac, { key: k, eligible: false, prix: 0 }); upd(); return; }
+        try { const r = await call('checkVac', { prenom: v1('#r-prenom'), nom: v1('#r-nom'), classe: $('#r-classe').value, matieres: $$('input[name=mat]:checked', f).map(i => i.value) }); if (f.isConnected && k === vacKey()) { Object.assign(vac, { key: k, eligible: !!(r && r.eligible), prix: (r && r.prix) || 0 }); upd(); } }
+        catch (_) { /* serveur ancien ou hors ligne : pas de message */ }
+      }, 450);
+    };
+    f.addEventListener('change', () => { upd(); checkVac(); }); upd();
+    ['#r-prenom', '#r-nom'].forEach(id => $(id).addEventListener('input', checkVac));
     f.addEventListener('submit', async e => {
       e.preventDefault();
       const err = $('#r-err'); err.hidden = true;
@@ -626,12 +644,12 @@
     if (isActive(me)) {
       const cm = curMonth();
       if (bal.late.length) alertes += `<div class="panel callout bad"><h3>⚠ Retard de paiement</h3><p>${bal.late.map(m => `La mensualité de <b>${monthLabel(m)}</b> devait être payée au plus tard le <b>${dateLabel(deadline(me, m))}</b>.`).join('<br>')}</p><p>Reste à payer : <b>${fcfaLong(bal.reste)}</b>. Règle au plus vite, puis déclare ton paiement.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
-      else if (months.includes(cm) && paidFor(me.id, cm) + pendingFor(me.id, cm) < me.tarif) alertes += `<div class="panel callout"><h3>Mensualité de ${monthLabel(cm)}</h3><p>À payer au plus tard le <b>${dateLabel(deadline(me, cm))}</b> : ${fcfaLong(me.tarif - paidFor(me.id, cm))}.</p><div><button class="btn sm primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+      else if (months.includes(cm) && paidFor(me.id, cm) + pendingFor(me.id, cm) < dueFor(me, cm)) alertes += `<div class="panel callout"><h3>Mensualité de ${monthLabel(cm)}</h3><p>À payer à la fin du mois, au plus tard le <b>${dateLabel(deadline(me, cm))}</b> : ${fcfaLong(dueFor(me, cm) - paidFor(me.id, cm))}${me.moitie === 'oui' && cm === me.moisDebut ? ' (moitié du mois)' : ''}.</p><div><button class="btn sm primary" data-act="declare">Déclarer un paiement</button></div></div>`;
       if (bal.inscReste > 0 && !inscPending(me.id)) alertes += `<div class="panel callout warn"><h3>Frais d'inscription</h3><p>Il reste <b>${fcfaLong(bal.inscReste)}</b> à régler pour tes frais d'inscription.</p></div>`;
     }
     let action = '';
     if (me.statut === 'attente') action = inscPending(me.id) ? `<div class="panel callout warn"><h3>Étape 2 · Frais d'inscription déclarés</h3><p>Ta déclaration est en attente de validation par l'admin. Il te remettra ensuite ton code de confirmation.</p></div>`
-      : `<div class="panel callout warn"><h3>Étape 2 · Paie tes frais d'inscription</h3><p>Montant : <b>${fcfaLong(me.tarif)}</b> (le même montant que ta mensualité). ${esc(st.paiement)}</p><p>Ensuite, clique sur « Déclarer un paiement », choisis « Frais d'inscription » et indique la référence reçue par SMS. L'admin valide, puis te remet ton code de confirmation.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
+      : `<div class="panel callout warn"><h3>Étape 2 · Paie tes frais d'inscription</h3><p>Montant : <b>${fcfaLong(me.tarif)}</b> (le même montant que ta mensualité). ${esc(st.paiement)}</p><p>Ta première mensualité : <b>${monthLabel(me.moisDebut)}</b>, ${fcfaLong(dueFor(me, me.moisDebut))}${me.moitie === 'oui' ? ' (moitié du mois)' : ''}, à payer au plus tard le <b>${dateLabel(deadline(me, me.moisDebut))}</b>.</p><p>Ensuite, clique sur « Déclarer un paiement », choisis « Frais d'inscription » et indique la référence reçue par SMS. L'admin valide, puis te remet ton code de confirmation.</p><div><button class="btn primary" data-act="declare">Déclarer un paiement</button></div></div>`;
     else if (me.statut === 'code') action = `<form class="panel callout" id="cf" novalidate><h3>Étape 3 · Saisis ton code de confirmation</h3><p>Ton paiement est validé. Saisis le code que l'admin t'a remis (6 caractères).</p>
         <div class="toolbar"><input id="cf-code" class="grow" maxlength="8" autocapitalize="characters" autocomplete="one-time-code" placeholder="Ex. K7P4QM" style="letter-spacing:.15em;font-weight:700;text-transform:uppercase"><button class="btn primary" type="submit">Confirmer</button></div><p class="err" id="cf-err" hidden></p></form>`;
     else if (me.statut === 'actif') action = `<div class="panel callout ok"><h3>Inscription confirmée</h3><p>Ta place est réservée. Rendez-vous ${esc(dayName(st.debut) + ' ' + dateLabel(st.debut))} · ${esc(st.lieu)}.</p></div>`;
@@ -649,7 +667,7 @@
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
           <div class="tbl-wrap"><table><thead><tr><th>Échéance</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
           ${(() => { const [l, c, p] = inscState(me); return `<tr><td><b>Frais d'inscription</b></td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(me.tarif)}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; })()}
-          ${months.map(m => { const [l, c, p] = monthState(me, m); return `<tr><td>${monthLabel(m)}</td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(me.tarif)}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}
+          ${months.map(m => { const [l, c, p] = monthState(me, m); return `<tr><td>${monthLabel(m)}</td><td class="n">${fcfa(p)}<span class="sub">sur ${fcfa(dueFor(me, m))}${me.moitie === 'oui' && m === me.moisDebut ? ' · ½ mois' : ''}</span></td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}
           </tbody></table></div></div>
         <div class="panel"><h3>Mes paiements déclarés</h3>${hist.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objet</th><th>Mode</th><th class="n">Montant</th><th>État</th></tr></thead><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${payLabel(p)}<span class="sub">le ${esc(dateLabel(p.date))}</span></td><td>${esc(p.mode)}${p.ref ? `<span class="sub num">${esc(p.ref)}</span>` : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement pour l\'instant.</p>'}</div>
         <div class="panel"><h3>Mon emploi du temps · ${esc(me.classe)}</h3><div class="week">${weekHTML(S.sessions.filter(s => s.classes.includes(me.classe) && me.matieres.includes(s.matiere)), false)}</div></div>
@@ -755,8 +773,8 @@
     const me = S.me;
     const months = monthsRange(maxMonth(me.moisDebut || startMonth(), startMonth()), S.settings.finMois || '2027-07');
     const inscLeft = Math.max(0, me.tarif - inscPaid(me.id) - inscPending(me.id));
-    const first = inscLeft > 0 ? 'insc' : (months.find(m => paidFor(me.id, m) + pendingFor(me.id, m) < me.tarif) || months[0]);
-    const leftFor = v => v === 'insc' ? inscLeft : Math.max(0, me.tarif - paidFor(me.id, v) - pendingFor(me.id, v));
+    const first = inscLeft > 0 ? 'insc' : (months.find(m => paidFor(me.id, m) + pendingFor(me.id, m) < dueFor(me, m)) || months[0]);
+    const leftFor = v => v === 'insc' ? inscLeft : Math.max(0, dueFor(me, v) - paidFor(me.id, v) - pendingFor(me.id, v));
     openModal('Déclarer un paiement', `<form class="grid2" novalidate>
       <label class="f">Objet du paiement<select id="d-mois">${inscLeft > 0 ? `<option value="insc" ${first === 'insc' ? 'selected' : ''}>Frais d'inscription</option>` : ''}${months.map(m => `<option value="${m}" ${m === first ? 'selected' : ''}>Mensualité · ${monthLabel(m)}</option>`).join('')}</select></label>
       <label class="f">Montant (FCFA)<input id="d-mt" type="number" min="0" step="500" value="${leftFor(first) || me.tarif}"></label>
@@ -854,7 +872,7 @@
     const codeWait = S.students.filter(s => s.statut === 'code');
     const toVal = S.payments.filter(p => p.statut === 'a_valider');
     const m = curMonth() < startMonth() ? startMonth() : curMonth();
-    const attendu = act.filter(s => (s.moisDebut || startMonth()) <= m).reduce((a, s) => a + s.tarif, 0);
+    const attendu = act.filter(s => (s.moisDebut || startMonth()) <= m).reduce((a, s) => a + dueFor(s, m), 0);
     const encMois = S.payments.filter(p => payOk(p) && p.mois === m).reduce((a, p) => a + p.montant, 0);
     const bal = act.map(s => [s, balance(s)]);
     const impayes = bal.reduce((a, [, b]) => a + b.reste, 0);
@@ -932,7 +950,8 @@
   }
 
   function studentModal(id) {
-    const s = id ? clone(S.students.find(x => x.id === id)) : { id: uid('el'), prenom: '', nom: '', sexe: 'F', classe: S.settings.classes[0], etablissement: '', telEleve: '', parentNom: '', telParent: '', matieres: [], notesMaths: '', notesPC: '', notesSVT: '', statut: 'attente', source: 'manuel', notes: '', codeConf: '', createdAt: today(), moisDebut: maxMonth(curMonth(), startMonth()) };
+    const s = id ? clone(S.students.find(x => x.id === id)) : { id: uid('el'), prenom: '', nom: '', sexe: 'F', classe: S.settings.classes[0], etablissement: '', telEleve: '', parentNom: '', telParent: '', matieres: [], notesMaths: '', notesPC: '', notesSVT: '', statut: 'attente', source: 'manuel', notes: '', codeConf: '', createdAt: today() };
+    if (!id) Object.assign(s, C.planInscription(today(), S.settings));
     if (!id) { const t = S.settings.tarifs[s.classe]; s.matieres = t && t.pack ? t.pack.matieres.slice() : []; }
     const isNew = !id;
     const b = isNew ? null : balance(s);
@@ -951,6 +970,7 @@
         <div style="grid-column:1/-1;display:grid;gap:8px"><span style="font-weight:600;font-size:.9rem">Matières</span><div class="chips" id="s-mats"></div></div>
         <label class="f">Mensualité (FCFA) <span class="h">calculée selon la grille, modifiable</span><input id="s-tarif" type="number" min="0" step="500" value="${s.tarif || 0}"></label>
         <label class="f">Premier mois facturé<select id="s-mois">${schoolMonths().map(m => `<option value="${m}" ${m === (s.moisDebut || startMonth()) ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</select></label>
+        <label class="f">Premier mois<select id="s-moitie"><option value="">Mensualité entière</option><option value="oui" ${s.moitie === 'oui' ? 'selected' : ''}>Moitié (arrivé entre le 15 et le 20)</option></select></label>
         <label class="f">Statut<select id="s-statut">${Object.entries(STATUTS).map(([k, v]) => `<option value="${k}" ${s.statut === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></label>
         <label class="f">${isNew ? 'Mot de passe de son espace' : 'Nouveau mot de passe'} <span class="h">${isNew ? 'obligatoire · à lui communiquer' : (s.hasPwd ? 'laisser vide pour garder l\'actuel' : 'aucun mot de passe pour l\'instant')}</span><input id="s-pw" autocomplete="new-password" placeholder="${isNew ? 'ex. ses 4 derniers chiffres' : ''}"></label>
         <label class="f" style="grid-column:1/-1">Notes internes<textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></label>
@@ -980,7 +1000,7 @@
       const v = i => $(i).value.trim();
       const n = x => x.replace(',', '.');
       Object.assign(s, { prenom: v('#s-prenom'), nom: v('#s-nom'), sexe: v('#s-sexe'), classe: v('#s-classe'), etablissement: v('#s-etab'), telEleve: v('#s-tel'), parentNom: v('#s-pnom'), telParent: v('#s-ptel'),
-        notesMaths: n(v('#s-nM')), notesPC: n(v('#s-nP')), notesSVT: n(v('#s-nS')), matieres: $$('#s-mats input:checked').map(i => i.value), tarif: +v('#s-tarif') || 0, moisDebut: v('#s-mois'), statut: v('#s-statut'), notes: v('#s-notes') });
+        notesMaths: n(v('#s-nM')), notesPC: n(v('#s-nP')), notesSVT: n(v('#s-nS')), matieres: $$('#s-mats input:checked').map(i => i.value), tarif: +v('#s-tarif') || 0, moisDebut: v('#s-mois'), moitie: $('#s-moitie').value, statut: v('#s-statut'), notes: v('#s-notes') });
       const pw = v('#s-pw'); const er = $('#s-err');
       if (!s.prenom || !s.nom || !s.matieres.length) { er.textContent = 'Indiquez le prénom, le nom et au moins une matière.'; er.hidden = false; return; }
       if (isNew && !pw) { er.textContent = "Donnez un mot de passe à l'élève : sans mot de passe, il ne peut pas se connecter."; er.hidden = false; return; }
@@ -1020,7 +1040,7 @@
     const toVal = S.payments.filter(p => p.statut === 'a_valider').sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const list = S.students.filter(s => isActive(s) && (s.moisDebut || startMonth()) <= m).sort((a, b) => a.classe.localeCompare(b.classe) || a.nom.localeCompare(b.nom));
     const rows = list.map(s => [s, monthState(s, m)]);
-    const att = list.reduce((a, s) => a + s.tarif, 0), enc = rows.reduce((a, [, x]) => a + x[2], 0);
+    const att = list.reduce((a, s) => a + dueFor(s, m), 0), enc = rows.reduce((a, [, x]) => a + x[2], 0);
     const journal = S.payments.filter(p => p.mois === m).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const nbPaid = rows.filter(([, x]) => x[1] === 'ok').length;
     const name = id => { const s = S.students.find(x => x.id === id); return s ? fullName(s) + ' · ' + s.classe : 'élève supprimé'; };
@@ -1045,9 +1065,9 @@
         <thead><tr><th>Élève</th><th>Classe</th><th class="n">Mensualité</th><th class="n">Payé</th><th class="n">Reste</th><th>État</th><th></th></tr></thead>
         <tbody>${rows.map(([s, [l, c, p]]) => `<tr>
           <td><b>${esc(fullName(s))}</b><span class="sub num">${esc(s.telParent)}</span></td><td>${esc(s.classe)}</td>
-          <td class="n">${fcfa(s.tarif)}</td><td class="n">${fcfa(p)}</td><td class="n">${fcfa(Math.max(0, s.tarif - p))}</td>
+          <td class="n">${fcfa(dueFor(s, m))}${dueFor(s, m) !== s.tarif ? '<span class="sub">½ mois</span>' : ''}</td><td class="n">${fcfa(p)}</td><td class="n">${fcfa(Math.max(0, dueFor(s, m) - p))}</td>
           <td><span class="pill ${c}">${l}</span>${inscPaid(s.id) < s.tarif ? '<span class="sub">inscription non réglée</span>' : ''}</td>
-          <td><div class="row-actions">${c !== 'ok' ? `<button class="btn sm primary" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>${waLink(s, m, s.tarif - p)}<button class="btn sm" data-act="avis" data-id="${esc(s.id)}">Message</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`
+          <td><div class="row-actions">${c !== 'ok' ? `<button class="btn sm primary" data-act="pay" data-id="${esc(s.id)}">Encaisser</button>${waLink(s, m, dueFor(s, m) - p)}<button class="btn sm" data-act="avis" data-id="${esc(s.id)}">Message</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`
         : '<div class="tbl-wrap"><p class="empty-state">Aucun élève inscrit pour ce mois.</p></div>'}
       <div class="panel"><h3>Journal · ${monthLabel(m)}</h3>
         ${journal.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Élève</th><th>Mode</th><th class="n">Montant</th><th>État</th><th></th></tr></thead><tbody>${journal.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${esc(dateLabel(p.date))}</td><td>${esc(name(p.studentId))}${isInsc(p) ? '<span class="sub"><b>Frais d\'inscription</b></span>' : ''}${p.ref ? `<span class="sub">réf. ${esc(p.ref)}</span>` : ''}</td><td>${esc(p.mode)}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span>${p.validePar ? `<span class="sub">${p.statut === 'rejete' ? 'rejeté' : 'validé'} par ${esc(p.validePar)}</span>` : ''}</td><td><div class="row-actions">${payOk(p) ? `<button class="btn sm" data-act="receipt" data-id="${esc(p.id)}">Reçu</button>` : ''}<button class="btn sm danger" data-act="del-payment" data-id="${esc(p.id)}">Supprimer</button></div></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement ce mois-ci.</p>'}
@@ -1057,7 +1077,7 @@
     const opts = S.students.filter(s => s.statut !== 'abandon').sort((a, b) => a.nom.localeCompare(b.nom));
     if (!opts.length) { toast('Inscrivez d\'abord un élève'); return; }
     const st = (studentId && S.students.find(s => s.id === studentId)) || opts[0];
-    const firstUnpaid = s => { if (inscPaid(s.id) < s.tarif) return 'insc'; const ms = monthsRange(maxMonth(s.moisDebut || startMonth(), startMonth()), S.settings.finMois); return ms.find(m => paidFor(s.id, m) < s.tarif) || S.payMonth || ms[0]; };
+    const firstUnpaid = s => { if (inscPaid(s.id) < s.tarif) return 'insc'; const ms = monthsRange(maxMonth(s.moisDebut || startMonth(), startMonth()), S.settings.finMois); return ms.find(m => paidFor(s.id, m) < dueFor(s, m)) || S.payMonth || ms[0]; };
     openModal('Encaisser un paiement', `<form class="grid2" novalidate>
         <label class="f" style="grid-column:1/-1">Élève<select id="p-st">${opts.map(s => `<option value="${esc(s.id)}" ${s.id === st.id ? 'selected' : ''}>${esc(s.nom.toUpperCase() + ' ' + s.prenom)} · ${esc(s.classe)}${s.statut === 'attente' ? ' (sans paiement)' : ''}</option>`).join('')}</select></label>
         <label class="f">Objet<select id="p-mois"><option value="insc">Frais d'inscription</option>${schoolMonths().map(m => `<option value="${m}">Mensualité · ${monthLabel(m)}</option>`).join('')}</select></label>
@@ -1070,8 +1090,8 @@
     const fillAmt = () => {
       const s = S.students.find(x => x.id === $('#p-st').value); const m = $('#p-mois').value;
       if (m === 'insc') { $('#p-montant').value = Math.max(0, s.tarif - inscPaid(s.id)) || s.tarif; $('#p-info').textContent = `Frais d'inscription ${fcfaLong(s.tarif)} (même montant que la mensualité) · déjà validé : ${fcfaLong(inscPaid(s.id))}`; return; }
-      $('#p-montant').value = Math.max(0, s.tarif - paidFor(s.id, m)) || s.tarif;
-      $('#p-info').textContent = `Mensualité ${fcfaLong(s.tarif)} · à payer avant le ${dateLabel(deadline(s, m))} · déjà validé pour ${monthLabel(m)} : ${fcfaLong(paidFor(s.id, m))}`;
+      $('#p-montant').value = Math.max(0, dueFor(s, m) - paidFor(s.id, m)) || dueFor(s, m);
+      $('#p-info').textContent = `Mensualité ${fcfaLong(dueFor(s, m))}${dueFor(s, m) !== s.tarif ? ' (moitié du mois)' : ''} · à payer avant le ${dateLabel(deadline(s, m))} · déjà validé pour ${monthLabel(m)} : ${fcfaLong(paidFor(s.id, m))}`;
     };
     const fill = () => { const s = S.students.find(x => x.id === $('#p-st').value); $('#p-mois').value = firstUnpaid(s); fillAmt(); };
     $('#p-st').addEventListener('change', fill); $('#p-mois').addEventListener('change', fillAmt); fill();
