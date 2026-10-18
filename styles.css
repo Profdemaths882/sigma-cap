@@ -98,7 +98,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .topnav { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .topnav a { color: var(--fg); text-decoration: none; font-weight: 600; font-size: .92rem; padding: .5rem .6rem; border-radius: 6px; }
 .topnav a:hover { background: var(--surface-2); }
-@media (max-width: 720px) { .topnav a.opt { display: none; } }
+@media (max-width: 720px) { .topnav a.opt, .topnav .share-ic .opt { display: none; } .topnav .share-ic { padding-inline: 10px; } }
 
 /* ---------- hero : affiche bleu Sigma, logo et portraits en grand ---------- */
 .hero { --h-bg: #13274a; --h-fg: #ffffff; --h-soft: rgba(255,255,255,.74); --h-line: rgba(255,255,255,.22); --h-lime: #a6d65e;
@@ -348,3 +348,10 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 
 /* réduction cours de vacances, annoncée pendant l'inscription */
 .vacnote { margin: 0; background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: .95rem; }
+
+/* Partage */
+.share-ic { display: inline-flex; align-items: center; gap: 6px; }
+.share-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; align-items: center; }
+.share-row .btn svg { vertical-align: -3px; }
+.share-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+.share-grid .btn { justify-content: center; text-align: center; }

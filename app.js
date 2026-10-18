@@ -325,6 +325,26 @@
   /* =========================================================
      PAGE PUBLIQUE
      ========================================================= */
+  /* ---------- partage : inviter des élèves (places limitées) ---------- */
+  const shareLink = () => 'https://profdemaths882.github.io/sigma-cap/';
+  const shareMsg = () => `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`;
+  const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
+  function shareModal() {
+    const msg = shareMsg();
+    openModal('Partager Sigma Cap', `<p>Invite tes camarades et leurs parents : <b>les places sont limitées</b> dans chaque classe.</p>
+      <label class="f">Message <span class="h">modifiable avant l'envoi</span><textarea id="sh-txt" rows="6">${esc(msg)}</textarea></label>
+      <div class="share-grid">
+        <a class="btn go" id="sh-wa" target="_blank" rel="noopener" href="${shareWa()}">WhatsApp</a>
+        <a class="btn" id="sh-fb" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink())}">Facebook</a>
+        <a class="btn" id="sh-sms" href="sms:?&body=${encodeURIComponent(msg)}">SMS</a>
+        ${navigator.share ? '<button type="button" class="btn" id="sh-native">Autres applis…</button>' : ''}
+        <button type="button" class="btn" id="sh-copy">Copier le message</button>
+      </div>`, `<button class="btn primary" data-act="close">Fermer</button>`);
+    const sync = () => { const t = $('#sh-txt').value; $('#sh-wa').href = 'https://wa.me/?text=' + encodeURIComponent(t); $('#sh-sms').href = 'sms:?&body=' + encodeURIComponent(t); };
+    $('#sh-txt').addEventListener('input', sync);
+    $('#sh-copy').addEventListener('click', () => copy($('#sh-txt').value));
+    const nb = $('#sh-native'); if (nb) nb.addEventListener('click', async () => { try { await navigator.share({ title: 'Sigma Cap — Vers la réussite', text: $('#sh-txt').value.replace(shareLink(), '').trim(), url: shareLink() }); } catch (_) { } });
+  }
   function payTabsHTML() {
     const tel = (S.settings.contacts[0] && S.settings.contacts[0].tel) || '';
     const qui = (S.settings.contacts || []).map(c => c.nom).join(' ou ');
@@ -354,6 +374,7 @@
         <a class="opt" href="#" data-scroll="tarifs">Tarifs</a>
         <a class="opt" href="#" data-scroll="horaires">Horaires</a>
         <a class="opt" href="#" data-scroll="equipe">Équipe</a>
+        <button type="button" class="btn sm share-ic" data-act="share" aria-label="Partager Sigma Cap"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg><span class="opt">Partager</span></button>
         <a class="btn sm" href="#espace">Mon espace</a>
         <a class="btn primary sm" href="#" data-scroll="inscription">S'inscrire</a>
       </nav>
@@ -425,10 +446,14 @@
         <img src="img/qrcode.png" alt="QR code du site Sigma Cap" width="220" height="220">
         <div>
           <p class="eyebrow">Partager Sigma Cap</p>
-          <h2 style="margin-top:8px">Scannez pour vous inscrire</h2>
-          <p>Montrez ce QR code à un camarade ou à un parent : il ouvre directement cette page sur son téléphone.</p>
+          <h2 style="margin-top:8px">Invite tes camarades : les places sont limitées</h2>
+          <p>Envoie le lien à un camarade ou à un parent, ou montre-lui ce QR code : il ouvre directement cette page sur son téléphone.</p>
           <p class="small muted num">profdemaths882.github.io/sigma-cap</p>
-          <a href="img/qrcode-affiche.png" download="QR-code-Sigma-Cap.png" class="btn sm">Télécharger le QR code</a>
+          <div class="share-row">
+            <a class="btn go" target="_blank" rel="noopener" href="${shareWa()}">Partager sur WhatsApp</a>
+            <button type="button" class="btn" data-act="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> Autres partages</button>
+            <a href="img/qrcode-affiche.png" download="QR-code-Sigma-Cap.png" class="btn sm ghost">Télécharger le QR code</a>
+          </div>
         </div>
       </div>
     </div></section>
@@ -672,6 +697,7 @@
           </tbody></table></div></div>
         <div class="panel"><h3>Mes paiements déclarés</h3>${hist.length ? `<div class="tbl-wrap"><table><thead><tr><th>Objet</th><th>Mode</th><th class="n">Montant</th><th>État</th></tr></thead><tbody>${hist.map(p => { const [l, c] = PAY_ST[p.statut] || PAY_ST.valide; return `<tr><td>${payLabel(p)}<span class="sub">le ${esc(dateLabel(p.date))}</span></td><td>${esc(p.mode)}${p.ref ? `<span class="sub num">${esc(p.ref)}</span>` : ''}</td><td class="n">${fcfa(p.montant)}</td><td><span class="pill ${c}">${l}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">Aucun paiement pour l\'instant.</p>'}</div>
         <div class="panel"><h3>Mon emploi du temps · ${esc(me.classe)}</h3><div class="week">${weekHTML(S.sessions.filter(s => s.classes.includes(me.classe) && me.matieres.includes(s.matiere)), false)}</div></div>
+        <div class="panel callout"><div class="toolbar"><div class="grow"><h3>Invite tes camarades</h3><p class="small muted" style="margin:4px 0 0">Les places sont limitées : partage Sigma Cap avec un ami ou ses parents.</p></div><button class="btn primary sm" data-act="share">Partager</button></div></div>
         <div class="panel"><h3>Mes informations</h3><dl class="kv">
           <dt>École d'origine</dt><dd>${esc(me.etablissement) || '—'}</dd><dt>Dernières notes</dt><dd>${esc(notesTxt(me))}</dd>
           <dt>Parent</dt><dd>${esc(me.parentNom) || '—'} · <span class="num">${esc(me.telParent)}</span></dd><dt>Téléphone</dt><dd class="num">${esc(me.telEleve) || '—'}</dd></dl>
@@ -1437,6 +1463,7 @@
       }
       case 'receipt': receiptModal(id); break;
       case 'paytab': { S.payTab = el.dataset.v; const w = el.closest('.paytabs'); if (w) w.outerHTML = payTabsHTML(); break; }
+      case 'share': closeModal(); shareModal(); break;
       case 'avis': closeModal(); avisModal(id); break;
       case 'creds': closeModal(); credModal(el.dataset.kind, id); break;
       case 'add-note': addNoteModal(); break;
