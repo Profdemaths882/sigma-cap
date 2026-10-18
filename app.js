@@ -325,9 +325,39 @@
   /* =========================================================
      PAGE PUBLIQUE
      ========================================================= */
+  /* ---------- prochain rendez-vous : calculé depuis l'emploi du temps (Dakar = UTC) ----------
+     Dès que l'heure d'un cours est passée, on affiche automatiquement le cours suivant. */
+  function nextSession(filter) {
+    const list = (S.sessions || []).filter(filter || (() => true)); if (!list.length) return null;
+    const now = Date.now(), d0 = new Date(), debut = S.settings.debut || '';
+    for (let k = 0; k < 15; k++) {
+      const day = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() + k));
+      const iso = day.toISOString().slice(0, 10); if (debut && iso < debut) continue;
+      const jour = JOURS[(day.getUTCDay() + 6) % 7];
+      const cands = list.filter(x => x.jour === jour).map(x => { const [h, m] = String(x.debut).split(':').map(Number); return { x, t: Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), h, m || 0) }; })
+        .filter(c => c.t > now).sort((a, b) => a.t - b.t);
+      if (cands.length) { const c = cands[0]; return { iso, jour, debut: c.x.debut, t: c.t, sessions: list.filter(x => x.jour === jour && x.debut === c.x.debut) }; }
+    }
+    return null;
+  }
+  const rdvTxt = r => r ? `${r.jour} ${dateLabel(r.iso).replace(/ \d{4}$/, '')} à ${hfmt(r.debut)}` : 'à préciser';
+  function renderPoster() {
+    const st = S.settings, r = nextSession();
+    const profs = [['thiamP', 'M. Racine Thiam', 'Maths'], ['fayeP', 'M. Faye', 'Maths'], ['seneP', 'M. Sène', 'PC']];
+    document.title = 'Affiche · Sigma Cap';
+    $('#app').innerHTML = `<div class="poster-wrap"><div class="poster" id="poster">
+      <div class="po-top"><img src="${IMG.logo}" alt="Logo Sigma Cap"><div><p class="po-eye">Cours de renforcement · ${esc(st.annee)}</p><h1>Rendez-vous<br><em>${r ? esc(r.jour.toLowerCase()) : 'bientôt'}</em></h1></div></div>
+      <div class="po-date">${r ? `<b>${esc(dateLabel(r.iso).replace(/ \d{4}$/, ''))}</b><span>à ${esc(hfmt(r.debut))}</span>` : '<b>Date à venir</b>'}</div>
+      <p class="po-lieu">📍 ${esc(st.lieu)} · Maths · Physique-Chimie · SVT · de la 2nde S à la Terminale S</p>
+      <div class="po-profs">${profs.map(([k, n, m]) => `<figure><img src="${IMG[k]}" alt="${esc(n)}"><figcaption>${esc(n)}<span>${m}</span></figcaption></figure>`).join('')}</div>
+      <div class="po-foot"><div><p class="po-alert">⚠️ Places limitées</p><p class="po-cta">Inscris-toi en ligne avant le cours</p><p class="po-tel">${st.contacts.map(c => esc(c.nom) + ' ' + esc(c.tel)).join(' · ')}</p></div><img class="po-qr" src="img/qrcode.png" alt="QR code d'inscription"></div>
+    </div>
+    <p class="po-help">Cette affiche se met à jour toute seule avec le prochain cours de l'emploi du temps. Faites une capture d'écran pour la partager. <a href="#" data-act="to-public">Retour à l'accueil</a></p></div>`;
+  }
+
   /* ---------- partage : inviter des élèves (places limitées) ---------- */
   const shareLink = () => 'https://profdemaths882.github.io/sigma-cap/';
-  const shareMsg = () => `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`;
+  const shareMsg = () => { const r = nextSession(); return `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).${r ? `\n📅 Rendez-vous ${rdvTxt(r).toLowerCase()} au ${S.settings.lieu || 'CEM Kennedy'}.` : ''}\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`; };
   const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
   function shareModal() {
     const msg = shareMsg();
@@ -394,12 +424,13 @@
       <div class="hero-text">
         <h1>Des bases solides pour <em>réussir</em> le Bac.</h1>
         <p class="lead">Mathématiques, Physique-Chimie et SVT, de la Seconde S à la Terminale. Groupes en effectif réduit, fiches et évaluations régulières.</p>
+        ${(() => { const r = nextSession(); return r ? `<p class="rdv">📅 Rendez-vous <b>${esc(rdvTxt(r).toLowerCase())}</b> · ${esc(st.lieu)} · <span>places limitées</span></p>` : ''; })()}
         <div class="cta">
           <a class="btn go" href="#" data-scroll="inscription">${st.inscriptionsOuvertes ? "S'inscrire en ligne" : 'Inscriptions fermées'}</a>
           <a class="btn line" href="#espace">Mon espace</a>
         </div>
         <dl class="facts">
-          <div><dt>Début des cours</dt><dd>${esc(debutTxt)}</dd></div>
+          ${(() => { const r = nextSession(); return st.debut && today() < st.debut ? `<div><dt>Début des cours</dt><dd>${esc(debutTxt)}</dd></div>` : `<div><dt>Prochain cours</dt><dd>${esc(rdvTxt(r))}</dd></div>`; })()}
           <div><dt>Lieu</dt><dd>${esc(st.lieu)}</dd></div>
           <div><dt>Jours</dt><dd>${esc(st.jours)}</dd></div>
         </dl>
@@ -452,6 +483,7 @@
           <div class="share-row">
             <a class="btn go" target="_blank" rel="noopener" href="${shareWa()}">Partager sur WhatsApp</a>
             <button type="button" class="btn" data-act="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> Autres partages</button>
+            <a href="#affiche" class="btn sm ghost">Affiche du prochain cours</a>
             <a href="img/qrcode-affiche.png" download="QR-code-Sigma-Cap.png" class="btn sm ghost">Télécharger le QR code</a>
           </div>
         </div>
@@ -688,6 +720,7 @@
           <div class="kpi ${bal.reste ? 'alert' : ''}"><span class="l">Reste à payer à ce jour</span><span class="v">${fcfa(bal.reste)}</span><span class="s">${bal.late.length ? bal.late.length + ' mois en retard' : 'À jour'}${bal.inscReste ? ' · frais d\'inscription : ' + fcfa(bal.inscReste) : ''}</span></div>
           <div class="kpi"><span class="l">Statut</span><span class="v" style="font-size:1.1rem"><span class="pill ${sc}">${sl}</span></span><span class="s">N° ${esc(me.num)}</span></div>
         </div>
+        ${(() => { const r = nextSession(x => x.classes.includes(me.classe) && asList(me.matieres).includes(x.matiere)); return r ? `<div class="panel callout"><h3>Ton prochain cours</h3><p><b>${esc(rdvTxt(r))}</b> · ${r.sessions.filter(x => x.classes.includes(me.classe)).map(x => esc(MAT_LABEL[x.matiere] || x.matiere) + (x.prof ? ' avec ' + esc(x.prof) : '')).join(', ')} · ${esc(S.settings.lieu)}</p></div>` : ''; })()}
         ${avisHTML}${alertes}${action}
         ${suiviEleveHTML(me)}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
@@ -1537,6 +1570,7 @@
     closeModal();
     if (location.hash === '#admin') { try { history.replaceState(null, '', '#espace'); } catch (_) { } }
     if (location.hash === '#espace' || location.hash === '#admin') renderSpace();
+    else if (location.hash === '#affiche') renderPoster();
     else renderPublic();
   }
   window.addEventListener('hashchange', route);
@@ -1549,6 +1583,7 @@
     if (tok) { S.token = tok; try { applyData(await call('data')); } catch (_) { S.token = ''; try { localStorage.removeItem(SKEY); } catch (__) { } } }
     const reg = $('#reg'); const typing = reg && document.activeElement && reg.contains(document.activeElement);
     if (location.hash === '#espace') route();
+    else if (location.hash === '#affiche') renderPoster();
     else if (!typing) { const y = window.scrollY; renderPublic(); window.scrollTo(0, y); }
   }
   if ('serviceWorker' in navigator && location.protocol === 'https:' && window.top === window.self) {
