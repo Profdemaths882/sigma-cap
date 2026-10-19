@@ -359,6 +359,42 @@
   const shareLink = () => 'https://profdemaths882.github.io/sigma-cap/';
   const shareMsg = () => { const r = nextSession(); return `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).${r ? `\n📅 Rendez-vous ${rdvTxt(r).toLowerCase()} au ${S.settings.lieu || 'CEM Kennedy'}.` : ''}\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`; };
   const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
+
+  /* Note d'information affichée à l'accueil (élèves et parents) — jusqu'à NOTE.fin */
+  const NOTE = { id: 'svt-1ere', date: '2026-10-19', fin: '2026-11-30', option: 5000,
+    classes: ['1ère S1', '1ère S2'],
+    edt: [['Mercredi', '15h – 18h', 'Physique-Chimie', 'M. Sène'],
+          ['Samedi', '13h – 16h30', 'Mathématiques', 'M. Racine Thiam'],
+          ['Samedi', '16h30 – 18h30', 'SVT (option)', 'Professeur de SVT']] };
+  const noteOn = () => today() <= NOTE.fin;
+  const notePrix = () => NOTE.classes.map(c => { const t = S.settings.tarifs[c]; const p = t && t.pack ? +t.pack.prix || 0 : 0;
+    return { c, pack: p, svt: t && t.seules && t.seules.SVT != null ? +t.seules.SVT : NOTE.option }; });
+  const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S1 et la 1ère S2.\n\n🗓️ Emploi du temps 1ère S1 et 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
+  function noteHTML() {
+    if (!noteOn()) return '';
+    return `<section class="blk note-blk" id="note"><div class="wrap">
+      <article class="note-card">
+        <p class="eyebrow">Note aux élèves et aux parents · ${esc(dateLabel(NOTE.date))}</p>
+        <h2>Nouveau : la <span class="pill SVT">SVT</span> en option pour la 1ère S1 et la 1ère S2</h2>
+        <p>Chers élèves, chers parents, à la demande des familles, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour les classes de Première S1 et S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
+        <div class="note-grid">
+          <div><h3>Emploi du temps · 1ère S1 et 1ère S2</h3>
+            <table class="note-edt"><tbody>${NOTE.edt.map(r => `<tr${/SVT/.test(r[2]) ? ' class="hl"' : ''}><th>${r[0]}</th><td class="num">${r[1]}</td><td><b>${r[2]}</b><small>${esc(r[3])}</small></td></tr>`).join('')}</tbody></table>
+            <p class="small muted">Le cours de Maths du samedi se termine désormais à 16h30.</p></div>
+          <div><h3>Tarif de l'option</h3>
+            <p class="note-amt">+ ${fcfa(NOTE.option)}<small> / mois</small></p>
+            <p class="small">Et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.</p>
+            <ul class="note-list">${notePrix().filter(x => x.pack).map(x => `<li><b>${esc(x.c)}</b> : ${fcfa(x.pack)} → <b>${fcfa(x.pack + x.svt)}</b> / mois avec SVT</li>`).join('')}</ul></div>
+        </div>
+        <ul class="note-list"><li><b>Nouvel élève :</b> coche SVT dans le formulaire d'inscription.</li><li><b>Déjà inscrit :</b> préviens M. Thiam ou M. Faye pour ajouter la SVT.</li></ul>
+        <div class="share-row">
+          <a class="btn go" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(noteMsg())}">Partager la note sur WhatsApp</a>
+          <button type="button" class="btn" data-act="copy-code" data-v="${esc(noteMsg())}">Copier le texte</button>
+          <a class="btn ghost" href="#" data-scroll="inscription">S'inscrire</a>
+        </div>
+      </article>
+    </div></section>`;
+  }
   function shareModal() {
     const msg = shareMsg();
     openModal('Partager Sigma Cap', `<p>Invite tes camarades et leurs parents : <b>les places sont limitées</b> dans chaque classe.</p>
@@ -436,7 +472,7 @@
         </dl>
       </div>
     </div></section>
-
+    ${noteHTML()}
     <section class="blk" id="tarifs"><div class="wrap">
       <div class="blk-head"><div><p class="eyebrow">Grille tarifaire</p><h2 style="margin-top:8px">Tarifs mensuels</h2><p>Choisissez votre classe. Le pack regroupe toutes les matières de la classe à prix réduit.</p></div>
         <div class="seg" role="group" aria-label="Classe">${st.classes.map(c => `<button type="button" data-act="pubclass" data-v="${esc(c)}" aria-pressed="${c === S.pubClass}">${esc(c)}</button>`).join('')}</div>

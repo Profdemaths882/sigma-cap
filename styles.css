@@ -384,3 +384,25 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .po-qr { width: 100%; background: #fff; border-radius: 10px; padding: 5%; }
 .po-help { max-width: 540px; color: #c7d3e6; font-size: .9rem; text-align: center; margin: 0; }
 .po-help a { color: #a6d65e; }
+
+/* Note d'information à l'accueil */
+.note-blk { padding-top: 8px; }
+.note-card { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--svt); border-radius: 14px; padding: clamp(16px, 3vw, 28px); display: grid; gap: 14px; }
+.note-card h2 { font-size: clamp(1.3rem, 3.4vw, 1.9rem); }
+.note-card h2 .pill { font-size: .8em; vertical-align: .12em; }
+.note-card p { margin: 0; }
+.note-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; }
+.note-grid > div { background: var(--surface-2); border-radius: var(--r); padding: 14px; display: grid; gap: 8px; align-content: start; }
+.note-grid h3 { font-size: 1rem; }
+.note-edt { width: 100%; border-collapse: collapse; }
+.note-edt th, .note-edt td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.note-edt th { font-weight: 700; color: var(--ink); width: 1%; white-space: nowrap; }
+.note-edt td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.note-edt td small { display: block; color: var(--muted); font-size: .82rem; }
+.note-edt tr.hl td, .note-edt tr.hl th { background: var(--svt-bg); color: var(--svt); }
+.note-amt { font: 900 1.8rem/1 var(--display); color: var(--svt); }
+.note-amt small { font: 600 .9rem var(--body); color: var(--muted); }
+.note-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+@media (max-width: 700px) { .note-grid { grid-template-columns: minmax(0, 1fr); } }
+.note-edt th { text-transform: none; letter-spacing: 0; font-size: .92rem; }
+@media (max-width: 480px) { .note-grid > div { padding: 10px; } .note-edt th, .note-edt td { padding: 7px 3px; font-size: .88rem; } .note-edt { table-layout: fixed; } .note-edt th { width: 27%; white-space: normal; } .note-edt td.num { width: 33%; white-space: normal; } }

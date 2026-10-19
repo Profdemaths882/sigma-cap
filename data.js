@@ -39,8 +39,9 @@ window.SIGMA_DEFAULTS = {
     { id: "s5",  jour: "Vendredi", debut: "15:00", fin: "18:00", matiere: "SVT",   classes: ["Terminale S2"], prof: "", salle: "" },
     { id: "s6",  jour: "Samedi",   debut: "13:00", fin: "15:00", matiere: "PC",    classes: ["2nde S"], prof: "M. Sène", salle: "" },
     { id: "s7",  jour: "Samedi",   debut: "13:00", fin: "15:00", matiere: "Maths", classes: ["Terminale S1", "Terminale S2"], prof: "M. Faye", salle: "" },
-    { id: "s8",  jour: "Samedi",   debut: "13:00", fin: "17:00", matiere: "Maths", classes: ["1ère S1", "1ère S2"], prof: "M. Racine Thiam", salle: "" },
+    { id: "s8",  jour: "Samedi",   debut: "13:00", fin: "16:30", matiere: "Maths", classes: ["1ère S1", "1ère S2"], prof: "M. Racine Thiam", salle: "" },
     { id: "s9",  jour: "Samedi",   debut: "15:00", fin: "17:00", matiere: "Maths", classes: ["2nde S"], prof: "M. Faye", salle: "" },
-    { id: "s10", jour: "Samedi",   debut: "15:00", fin: "18:00", matiere: "PC",    classes: ["Terminale S1", "Terminale S2"], prof: "", salle: "" }
+    { id: "s10", jour: "Samedi",   debut: "15:00", fin: "18:00", matiere: "PC",    classes: ["Terminale S1", "Terminale S2"], prof: "", salle: "" },
+    { id: "s11", jour: "Samedi",   debut: "16:30", fin: "18:30", matiere: "SVT",   classes: ["1ère S1", "1ère S2"], prof: "", salle: "" }
   ]
 };
