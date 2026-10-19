@@ -361,7 +361,7 @@
   const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
 
   /* Note d'information affichée à l'accueil (élèves et parents) — jusqu'à NOTE.fin */
-  const NOTE = { id: 'svt-1ere', date: '2026-10-19', fin: '2026-11-30', option: 5000,
+  const NOTE = { id: 'svt-1ere', date: '2026-10-19', debut: '2026-10-31', fin: '2026-11-30', option: 5000,
     classes: ['1ère S1', '1ère S2'],
     edt: [['Mercredi', '15h – 18h', 'Physique-Chimie', 'M. Sène'],
           ['Samedi', '13h – 16h30', 'Mathématiques', 'M. Racine Thiam'],
@@ -369,14 +369,14 @@
   const noteOn = () => today() <= NOTE.fin;
   const notePrix = () => NOTE.classes.map(c => { const t = S.settings.tarifs[c]; const p = t && t.pack ? +t.pack.prix || 0 : 0;
     return { c, pack: p, svt: t && t.seules && t.seules.SVT != null ? +t.seules.SVT : NOTE.option }; });
-  const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S1 et la 1ère S2.\n\n🗓️ Emploi du temps 1ère S1 et 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
-  function noteHTML() {
+  const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S1 et la 1ère S2.\n🚀 Début des cours de SVT : ${dayName(NOTE.debut).toLowerCase()} ${dateLabel(NOTE.debut)}.\n\n🗓️ Emploi du temps 1ère S1 et 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
+  function noteHTML(inSpace) {
     if (!noteOn()) return '';
-    return `<section class="blk note-blk" id="note"><div class="wrap">
-      <article class="note-card">
+    const card = `<article class="info-card">
         <p class="eyebrow">Note aux élèves et aux parents · ${esc(dateLabel(NOTE.date))}</p>
         <h2>Nouveau : la <span class="pill SVT">SVT</span> en option pour la 1ère S1 et la 1ère S2</h2>
         <p>Chers élèves, chers parents, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour les classes de Première S1 et S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
+        <p class="note-start">🚀 Début des cours de SVT : <b>${esc(dayName(NOTE.debut).toLowerCase() + ' ' + dateLabel(NOTE.debut))}</b> à 16h30</p>
         <div class="note-grid">
           <div><h3>Emploi du temps · 1ère S1 et 1ère S2</h3>
             <table class="note-edt"><tbody>${NOTE.edt.map(r => `<tr${/SVT/.test(r[2]) ? ' class="hl"' : ''}><th>${r[0]}</th><td class="num">${r[1]}</td><td><b>${r[2]}</b><small>${esc(r[3])}</small></td></tr>`).join('')}</tbody></table>
@@ -390,10 +390,10 @@
         <div class="share-row">
           <a class="btn go" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(noteMsg())}">Partager la note sur WhatsApp</a>
           <button type="button" class="btn" data-act="copy-code" data-v="${esc(noteMsg())}">Copier le texte</button>
-          <a class="btn ghost" href="#" data-scroll="inscription">S'inscrire</a>
+          ${inSpace ? '' : `<a class="btn ghost" href="#" data-scroll="inscription">S'inscrire</a>`}
         </div>
-      </article>
-    </div></section>`;
+      </article>`;
+    return inSpace ? card : `<section class="blk note-blk" id="note"><div class="wrap">${card}</div></section>`;
   }
   function shareModal() {
     const msg = shareMsg();
@@ -761,6 +761,7 @@
         </div>
         ${(() => { const r = nextSession(x => x.classes.includes(me.classe) && asList(me.matieres).includes(x.matiere)); return r ? `<div class="panel callout"><h3>Ton prochain cours</h3><p><b>${esc(rdvTxt(r))}</b> · ${r.sessions.filter(x => x.classes.includes(me.classe)).map(x => esc(MAT_LABEL[x.matiere] || x.matiere) + (x.prof ? ' avec ' + esc(x.prof) : '')).join(', ')} · ${esc(S.settings.lieu)}</p></div>` : ''; })()}
         ${avisHTML}${alertes}${action}
+        ${NOTE.classes.includes(me.classe) ? noteHTML(true) : ''}
         ${suiviEleveHTML(me)}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
           <div class="tbl-wrap"><table><thead><tr><th>Échéance</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
@@ -940,7 +941,7 @@
           </tbody></table></div></div>`).join('') : '<div class="tbl-wrap"><p class="empty-state">Aucun élève inscrit dans vos cours pour l\'instant.</p></div>'}`;
     $('#app').innerHTML = `<div class="admin-shell">${spaceTop('Espace prof', me.nom + ' · ' + (MAT_LABEL[me.matiere] || me.matiere))}
       <nav class="tabs"><div class="wrap" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-act="ptab" data-v="${k}" aria-selected="${S.ptab === k}">${l}</button>`).join('')}</div></nav>
-      <main class="wrap admin-main">${body}</main></div>`;
+      <main class="wrap admin-main">${noteHTML(true)}${body}</main></div>`;
   }
 
   /* =========================================================
@@ -983,7 +984,7 @@
     const maxC = Math.max(1, ...byClass.map(x => Math.max(x[1], x[2])));
     const late = bal.filter(([, b]) => b.late.length || b.inscReste).sort((a, b) => b[1].late.length - a[1].late.length || b[1].reste - a[1].reste).slice(0, 8);
     const hasEx = S.students.some(s => s.exemple);
-    return `
+    return `${noteHTML(true)}
       ${hasEx ? `<div class="warnbox">Les élèves marqués « exemple » servent à montrer l'application. Supprimez-les depuis l'onglet Élèves avant de démarrer.</div>` : ''}
       <div class="kpis">
         <div class="kpi"><span class="l">Élèves inscrits (payé)</span><span class="v">${act.length}</span><span class="s">${pend.length} sans paiement · ${codeWait.length} code non saisi</span></div>
