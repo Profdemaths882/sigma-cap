@@ -505,7 +505,10 @@
       const save = sum - t.pack.prix;
       cards.push(`<div class="price best"><span class="pill ok tag">Pack · ${save > 0 ? fcfa(save) + ' économisés' : 'toutes les matières'}</span><h3>${t.pack.matieres.map(m => MAT_LABEL[m]).join(' + ')}</h3><div class="amt">${fcfa(t.pack.prix)}<small>CFA / mois</small></div></div>`);
     }
-    MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(`<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
+    const pk = t.pack ? t.pack.matieres : [];
+    MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(pk.length && !pk.includes(m)
+      ? `<div class="price"><span class="pill ${m} tag">Option ${m}</span><h3>${MAT_LABEL[m]} au choix</h3><div class="amt">+ ${fcfa(t.seules[m])}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">S'ajoute à la mensualité et aux frais d'inscription.</p></div>`
+      : `<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
     return cards.join('');
   }
 

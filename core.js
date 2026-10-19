@@ -59,6 +59,10 @@ var SigmaCore = (function () {
     if (!t || !mats.length) return 0;
     var key = function (a) { return a.slice().sort().join('+'); };
     if (t.pack && t.pack.matieres && key(t.pack.matieres) === key(mats)) return +t.pack.prix || 0;
+    // Pack + matière en option (ex. 1ère S1/S2 : pack Maths + PC + SVT en option à 5 000 F) = prix du pack + prix de l'option
+    var pk = t.pack && t.pack.matieres ? asList(t.pack.matieres) : [];
+    if (pk.length && pk.every(function (m) { return mats.indexOf(m) >= 0; }))
+      return (+t.pack.prix || 0) + sum(mats.filter(function (m) { return pk.indexOf(m) < 0; }), function (m) { return t.seules[m]; });
     return sum(mats, function (m) { return t.seules[m]; });
   }
   /* ---------- règle du premier mois (inscription en cours d'année) ----------
