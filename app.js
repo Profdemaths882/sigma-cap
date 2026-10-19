@@ -376,7 +376,7 @@
       <article class="note-card">
         <p class="eyebrow">Note aux élèves et aux parents · ${esc(dateLabel(NOTE.date))}</p>
         <h2>Nouveau : la <span class="pill SVT">SVT</span> en option pour la 1ère S1 et la 1ère S2</h2>
-        <p>Chers élèves, chers parents, à la demande des familles, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour les classes de Première S1 et S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
+        <p>Chers élèves, chers parents, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour les classes de Première S1 et S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
         <div class="note-grid">
           <div><h3>Emploi du temps · 1ère S1 et 1ère S2</h3>
             <table class="note-edt"><tbody>${NOTE.edt.map(r => `<tr${/SVT/.test(r[2]) ? ' class="hl"' : ''}><th>${r[0]}</th><td class="num">${r[1]}</td><td><b>${r[2]}</b><small>${esc(r[3])}</small></td></tr>`).join('')}</tbody></table>
