@@ -28,6 +28,7 @@ window.SIGMA_DEFAULTS = {
   },
   // Documents intégrés au site (dossier docs/) : visibles par les élèves inscrits de la classe et de la matière
   docs: [
+    { id: "st-2s-0", titre: "Fiche de TD n°1 Sigma Cap – Calcul dans ℝ", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/sigma-cap-td1-calcul-dans-R.pdf", taille: 377725, par: "M. Racine Thiam", note: "15 exercices · puissances, radicaux, valeur absolue, encadrements, démonstrations", fixe: true },
     { id: "st-2s-1", titre: "Cours – Calcul dans ℝ", type: "Cours", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/cours-calcul-dans-R.pdf", taille: 207440, par: "Sigma Cap", note: "M. I.H. Diallo · puissances, identités remarquables, radicaux, valeur absolue, équations et inéquations", fixe: true },
     { id: "st-2s-2", titre: "Cours et exercices de mathématiques – Seconde", type: "Cours", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/cours-et-exercices-seconde.pdf", taille: 1430672, par: "Sigma Cap", note: "65 pages · programme français : vecteurs, fonctions, statistiques, probabilités, trigonométrie", fixe: true },
     { id: "st-2s-3", titre: "Recueil d'exercices 2nde S – tous les chapitres", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/recueil-exercices-2nde-S.pdf", taille: 3597185, par: "Sigma Cap", note: "55 pages · calcul dans ℝ, polynômes, vecteurs, barycentre, angles et trigonométrie…", fixe: true },
