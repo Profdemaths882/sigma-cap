@@ -409,3 +409,16 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .note-start { background: var(--svt-bg); color: var(--svt); border-radius: var(--r); padding: 10px 12px; font-weight: 600; }
 .note-start b { color: inherit; }
 .admin-main > .info-card { margin-bottom: 4px; }
+
+/* Fiches d'exercices et évaluations */
+.docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.doc { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: var(--r); padding: 12px; background: var(--surface); }
+.doc-ic { font-size: 1.6rem; text-align: center; }
+.doc-b { display: grid; gap: 4px; min-width: 0; }
+.doc-b b { overflow-wrap: anywhere; }
+.doc-m { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .85rem; color: var(--muted); }
+.doc-a { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.doc-h { margin: 14px 0 8px; }
+.doc-filters { margin: 12px 0; }
+.doc-filters select { width: auto; }
+@media (max-width: 560px) { .doc { grid-template-columns: 32px minmax(0, 1fr); } .doc-a { grid-column: 1 / -1; justify-content: flex-start; } .doc-filters select { flex: 1 1 140px; } }

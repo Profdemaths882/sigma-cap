@@ -181,6 +181,15 @@ var SigmaCore = (function () {
       var me = find('teachers', sess.id); if (!me) return false;
       return st.read('sessions').some(function (x) { return x.prof === me.nom && asList(x.classes).indexOf(s.classe) >= 0 && (!mat || x.matiere === mat) && asList(s.matieres).indexOf(x.matiere) >= 0; });
     }
+    // Fiches d'exercices et évaluations (PDF) : fichier rangé par le store (Google Drive), fiche dans la table « docs »
+    var DOC_TYPES = ['Fiche d\'exercices', 'Évaluation', 'Corrigé', 'Cours'];
+    function docsFor(sess, d) {
+      var docs = st.read('docs').sort(function (a, b) { return String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)); });
+      if (sess.role === 'admin' || sess.role === 'prof') return docs;
+      var s = d.students.filter(function (x) { return x.id === sess.id; })[0];
+      if (!s || !isActive(s)) return [];
+      return docs.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && (!x.matiere || asList(s.matieres).indexOf(x.matiere) >= 0); });
+    }
     function nextNum() { return 'SC26-' + ('000' + st.nextCounter()).slice(-4); }
     function settings() {
       var s = st.getSettings();
@@ -215,7 +224,7 @@ var SigmaCore = (function () {
       if (sess.role === 'admin') {
         return { role: 'admin', me: { id: sess.id, nom: sess.nom }, settings: d.settings, sessions: d.sessions,
           teachers: d.teachers.map(function (t) { return strip('teachers', t); }), students: d.students.map(function (s) { return strip('students', s); }),
-          payments: d.payments, expenses: d.expenses, sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
+          payments: d.payments, expenses: d.expenses, docs: docsFor(sess, d), sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
       }
       if (sess.role === 'prof') {
         var me = d.teachers.filter(function (t) { return t.id === sess.id; })[0];
@@ -225,13 +234,13 @@ var SigmaCore = (function () {
           return s.statut !== 'abandon' && mine.some(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && asList(s.matieres).indexOf(x.matiere) >= 0; });
         }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut, createdAt: s.createdAt, suivi: s.suivi || '' }; });
         return { role: 'prof', me: pubTeacher(me), settings: pubSettings(d.settings), sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
-          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d) };
+          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d), docs: docsFor(sess, d) };
       }
       var s = d.students.filter(function (x) { return x.id === sess.id; })[0];
       if (!s) throw new Error('Compte introuvable.');
       var meS = strip('students', s); delete meS.codeConf; delete meS.essais;
       return { role: 'eleve', me: meS, settings: pubSettings(d.settings), sessions: d.sessions.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0; }),
-        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }) };
+        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }), docs: docsFor(sess, d) };
     }
 
     function onValidated(studentId) {
@@ -384,6 +393,40 @@ var SigmaCore = (function () {
           suc.coms.push({ id: 'c-' + st.uuid().replace(/-/g, '').slice(0, 8), mat: cm, texte: tx, date: today(), par: sess.nom, role: sess.role });
           if (suc.coms.length > 50) suc.coms = suc.coms.slice(-50); // une cellule Google Sheet contient au plus 50 000 caractères
           sc.suivi = JSON.stringify(suc); st.upsert('students', sc);
+          return dataFor(sess);
+        }
+        case 'addDoc': {
+          need(sess, ['prof', 'admin']);
+          if (!st.saveFile) throw new Error("Le serveur n'est pas à jour : collez le nouveau Code.gs puis déployez une nouvelle version.");
+          var dc = req.doc || {}, f = req.file || {};
+          var ti = clean(dc.titre, 90); if (ti.length < 3) throw new Error('Donnez un titre au document.');
+          var ty = DOC_TYPES.indexOf(dc.type) >= 0 ? dc.type : DOC_TYPES[0];
+          var cls = asList(dc.classes).filter(function (c) { return (cfg.classes || []).indexOf(c) >= 0; });
+          if (!cls.length) throw new Error('Choisissez au moins une classe.');
+          var mt2 = MATIERES.indexOf(dc.matiere) >= 0 ? dc.matiere : '';
+          if (!mt2) throw new Error('Choisissez la matière.');
+          if (sess.role === 'prof') {
+            var meT = find('teachers', sess.id); if (!meT) throw new Error('Compte introuvable.');
+            var ok = st.read('sessions').some(function (x) { return x.prof === meT.nom && x.matiere === mt2 && cls.some(function (c) { return asList(x.classes).indexOf(c) >= 0; }); });
+            if (!ok && meT.matiere !== mt2) throw new Error("Vous ne pouvez publier que dans votre matière.");
+          }
+          var b64 = String(f.data || '').replace(/^data:[^,]*,/, '');
+          if (!b64) throw new Error('Choisissez le fichier PDF.');
+          if (b64.length > 11 * 1024 * 1024) throw new Error('Fichier trop lourd (8 Mo maximum).');
+          if (b64.slice(0, 6) !== 'JVBERi') throw new Error('Le fichier doit être un PDF.');
+          var nom = clean(f.name, 80).replace(/[\\/:*?"<>|]+/g, '-') || (ti + '.pdf'); if (!/\.pdf$/i.test(nom)) nom += '.pdf';
+          var saved = st.saveFile(nom, b64);
+          var rec2 = { id: 'doc-' + st.uuid().replace(/-/g, '').slice(0, 10), titre: ti, type: ty, matiere: mt2, classes: cls, date: today(),
+            fichier: nom, fileId: saved.id, url: saved.url, taille: Math.round(b64.length * 0.75), par: sess.nom, parId: sess.id, note: clean(dc.note, 200) };
+          st.upsert('docs', rec2);
+          return dataFor(sess);
+        }
+        case 'delDoc': {
+          need(sess, ['prof', 'admin']);
+          var dd = find('docs', req.id); if (!dd) throw new Error('Document introuvable.');
+          if (sess.role !== 'admin' && dd.parId !== sess.id) throw new Error('Seul celui qui a publié ce document peut le retirer.');
+          if (st.deleteFile && dd.fileId) { try { st.deleteFile(dd.fileId); } catch (e) { /* déjà supprimé */ } }
+          st.remove('docs', dd.id);
           return dataFor(sess);
         }
         case 'delComment': {

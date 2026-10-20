@@ -136,7 +136,7 @@
   /* ---------------- état ---------------- */
   const S = {
     settings: clone(DEF.settings), sessions: clone(DEF.sessions), teachers: clone(DEF.teachers),
-    students: [], payments: [], expenses: [], finance: null, byMonth: [], alerts: [],
+    students: [], payments: [], expenses: [], finance: null, byMonth: [], alerts: [], docs: [], docFilter: { classe: '', mat: '', type: '' },
     role: null, me: null, token: '', sheetUrl: '', updatedAt: null,
     tab: 'dash', ptab: 'finances', suiviFilter: { classe: '', mat: '' }, pubClass: '2nde S', payMonth: null, depMonth: null, finMonth: '',
     filter: { q: '', classe: '', statut: '' }, justRegistered: null
@@ -165,6 +165,7 @@
     if (d.byMonth) S.byMonth = d.byMonth;
     if (d.alerts) S.alerts = d.alerts;
     if (d.sheetUrl) S.sheetUrl = d.sheetUrl;
+    if (d.docs) S.docs = d.docs.map(x => Object.assign({}, x, { classes: asList(x.classes) }));
     if (d.role === 'eleve' && d.me) S.me = normStudent(d.me);
     S.updatedAt = new Date();
   }
@@ -212,8 +213,8 @@
     const db = demoDb();
     return {
       read: k => clone(db[k] || []),
-      upsert(k, item) { const l = db[k]; const i = l.findIndex(x => x.id === item.id); if (i >= 0) l[i] = clone(item); else l.push(clone(item)); demoSave(); },
-      remove(k, id) { db[k] = db[k].filter(x => x.id !== id); demoSave(); },
+      upsert(k, item) { const l = db[k] || (db[k] = []); const i = l.findIndex(x => x.id === item.id); if (i >= 0) l[i] = clone(item); else l.push(clone(item)); demoSave(); },
+      remove(k, id) { db[k] = (db[k] || []).filter(x => x.id !== id); demoSave(); },
       replace(k, items) { db[k] = clone(items); demoSave(); },
       getSettings: () => (db.settings ? clone(db.settings) : null),
       setSettings(s) { db.settings = clone(s); demoSave(); },
@@ -222,7 +223,11 @@
       cacheDel(k) { delete db.cache[k]; demoSave(); },
       nextCounter() { db.counter = (db.counter || 0) + 1; demoSave(); return db.counter; },
       today, uuid: () => Array.from({ length: 4 }, () => Math.random().toString(16).slice(2, 10).padEnd(8, '0')).join('-'),
-      masterCode: DEMO_MASTER, sheetUrl: () => ''
+      masterCode: DEMO_MASTER, sheetUrl: () => '',
+      // démo : le PDF reste dans ce navigateur le temps de la visite
+      saveFile(name, b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        return { id: 'demo-' + Date.now(), url: URL.createObjectURL(new Blob([u], { type: 'application/pdf' })) }; },
+      deleteFile() { }
     };
   }
   function demoCall(body) { if (!demoHandle) demoHandle = C.make(demoStore()); return demoHandle(body); }
@@ -762,6 +767,7 @@
         ${(() => { const r = nextSession(x => x.classes.includes(me.classe) && asList(me.matieres).includes(x.matiere)); return r ? `<div class="panel callout"><h3>Ton prochain cours</h3><p><b>${esc(rdvTxt(r))}</b> · ${r.sessions.filter(x => x.classes.includes(me.classe)).map(x => esc(MAT_LABEL[x.matiere] || x.matiere) + (x.prof ? ' avec ' + esc(x.prof) : '')).join(', ')} · ${esc(S.settings.lieu)}</p></div>` : ''; })()}
         ${avisHTML}${alertes}${action}
         ${NOTE.classes.includes(me.classe) ? noteHTML(true) : ''}
+        ${docsEleveHTML(me)}
         ${suiviEleveHTML(me)}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
           <div class="tbl-wrap"><table><thead><tr><th>Échéance</th><th class="n">Payé</th><th>État</th></tr></thead><tbody>
@@ -815,6 +821,67 @@
       $('#n-save').disabled = true;
       try { applyData(await call('addNote', { note: { mat: $('#n-mat').value, val, type: $('#n-type').value, date: $('#n-date').value, lib: $('#n-lib').value.trim() } })); closeModal(); toast('Note enregistrée'); renderEleve(); }
       catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = /Accès refusé/.test(x.message) ? "Le serveur n'est pas encore à jour pour les notes : préviens l'admin." : x.message; er.hidden = false; $('#n-save').disabled = false; }
+    });
+  }
+
+  /* ---------- fiches d'exercices et évaluations (PDF) ---------- */
+  const DOC_TYPES = ["Fiche d'exercices", 'Évaluation', 'Corrigé', 'Cours'];
+  const DOC_ICON = { "Fiche d'exercices": '📝', 'Évaluation': '🧪', 'Corrigé': '✅', 'Cours': '📘' };
+  const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' Ko';
+  function docRow(d, canDel) {
+    return `<li class="doc"><span class="doc-ic" aria-hidden="true">${DOC_ICON[d.type] || '📄'}</span>
+      <div class="doc-b"><b>${esc(d.titre)}</b>
+        <span class="doc-m"><span class="pill ${esc(d.matiere)}">${esc(d.matiere)}</span> <span class="pill neutral">${esc(d.type)}</span> ${d.classes.map(esc).join(', ')}</span>
+        <span class="small muted">${esc(dateLabel(d.date))}${d.par ? ' · ' + esc(d.par) : ''}${d.taille ? ' · ' + kb(+d.taille) : ''}</span>
+        ${d.note ? `<span class="small">${esc(d.note)}</span>` : ''}</div>
+      <div class="doc-a"><a class="btn sm primary" href="${esc(d.url)}" target="_blank" rel="noopener">Ouvrir</a>${canDel ? `<button class="btn sm ghost" data-act="del-doc" data-id="${esc(d.id)}">Retirer</button>` : ''}</div></li>`;
+  }
+  function docsPane() {
+    const f = S.docFilter, docs = S.docs || [];
+    const vis = docs.filter(d => (!f.classe || d.classes.includes(f.classe)) && (!f.mat || d.matiere === f.mat) && (!f.type || d.type === f.type));
+    const canDel = d => S.role === 'admin' || (S.me && d.parId === S.me.id);
+    const sel = (k, label, opts) => `<select data-docf="${k}" aria-label="${label}"><option value="">${label}</option>${opts.map(o => `<option value="${esc(o[0])}" ${f[k] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+    return `<div class="panel"><div class="toolbar"><div class="grow"><h3>Fiches d'exercices et évaluations</h3><p class="small muted" style="margin:4px 0 0">Les PDF publiés ici apparaissent dans l'espace des élèves inscrits de la classe et de la matière choisies.</p></div><button class="btn primary" data-act="add-doc">+ Ajouter un PDF</button></div>
+      <div class="toolbar doc-filters">${sel('classe', 'Toutes les classes', S.settings.classes.map(c => [c, c]))}${sel('mat', 'Toutes les matières', MATIERES.map(m => [m, MAT_LABEL[m]]))}${sel('type', 'Tous les types', DOC_TYPES.map(t => [t, t]))}</div>
+      ${vis.length ? `<ul class="docs">${vis.map(d => docRow(d, canDel(d))).join('')}</ul>` : `<p class="empty-state">${docs.length ? 'Aucun document pour ce filtre.' : 'Aucun document pour l\'instant. Cliquez sur « Ajouter un PDF ».'}</p>`}</div>`;
+  }
+  function docsEleveHTML(me) {
+    const docs = S.docs || [];
+    if (!isActive(me)) return `<div class="panel"><h3>Mes fiches et évaluations</h3><p class="muted">Les fiches d'exercices et les évaluations apparaîtront ici dès que ton inscription sera confirmée.</p></div>`;
+    const mats = asList(me.matieres).filter(m => docs.some(d => d.matiere === m));
+    return `<div class="panel"><h3>Mes fiches et évaluations</h3>${docs.length ? mats.map(m => `<h4 class="doc-h"><span class="pill ${esc(m)}">${MAT_LABEL[m] || esc(m)}</span></h4><ul class="docs">${docs.filter(d => d.matiere === m).map(d => docRow(d, false)).join('')}</ul>`).join('') : '<p class="muted">Aucun document pour l\'instant. Tes professeurs déposeront ici les fiches d\'exercices et les évaluations.</p>'}</div>`;
+  }
+  function addDocModal() {
+    const me = S.me, isProf = S.role === 'prof';
+    const myMats = isProf ? [...new Set([me.matiere, ...S.sessions.filter(x => x.prof === me.nom).map(x => x.matiere)].filter(Boolean))] : MATIERES;
+    const myClasses = isProf ? [...new Set(S.sessions.filter(x => x.prof === me.nom).flatMap(x => x.classes))] : [];
+    openModal('Ajouter une fiche ou une évaluation', `<form class="grid2" novalidate>
+      <label class="f" style="grid-column:1/-1">Titre<input id="d-titre" maxlength="90" placeholder="ex. Fiche n°3 – Dérivation"></label>
+      <label class="f">Type<select id="d-type">${DOC_TYPES.map(t => `<option>${esc(t)}</option>`).join('')}</select></label>
+      <label class="f">Matière<select id="d-mat">${myMats.map(m => `<option value="${esc(m)}">${MAT_LABEL[m] || esc(m)}</option>`).join('')}</select></label>
+      <fieldset class="f" style="grid-column:1/-1;border:0;padding:0;margin:0"><span>Classes</span><div class="chips" style="margin-top:6px">${S.settings.classes.map(c => `<label class="chk"><input type="checkbox" name="d-cl" value="${esc(c)}" ${myClasses.length === 1 && myClasses[0] === c ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></fieldset>
+      <label class="f" style="grid-column:1/-1">Fichier PDF <span class="h">8 Mo maximum</span><input id="d-file" type="file" accept="application/pdf,.pdf"></label>
+      <label class="f" style="grid-column:1/-1">Consigne <span class="h">facultatif · ex. « À rendre samedi »</span><input id="d-note" maxlength="200"></label>
+    </form><p class="err" id="d-err" hidden></p>`, `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="d-save">Publier</button>`);
+    $('#d-file').addEventListener('change', () => { const fi = $('#d-file').files[0]; if (fi && !$('#d-titre').value.trim()) $('#d-titre').value = fi.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').slice(0, 90); });
+    $('#d-save').addEventListener('click', async () => {
+      const er = $('#d-err'), bad = m => { er.textContent = m; er.hidden = false; };
+      const fi = $('#d-file').files[0], titre = $('#d-titre').value.trim(), classes = [...document.querySelectorAll('input[name=d-cl]:checked')].map(x => x.value);
+      if (titre.length < 3) return bad('Donnez un titre au document.');
+      if (!classes.length) return bad('Cochez au moins une classe.');
+      if (!fi) return bad('Choisissez le fichier PDF.');
+      if (!/\.pdf$/i.test(fi.name) && fi.type !== 'application/pdf') return bad('Le fichier doit être un PDF.');
+      if (fi.size > 8 * 1048576) return bad('Fichier trop lourd : 8 Mo maximum. Compressez-le (ex. ilovepdf.com) puis réessayez.');
+      const b = $('#d-save'); b.disabled = true; b.textContent = 'Envoi en cours…'; er.hidden = true;
+      try {
+        const data = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ko(new Error('Lecture du fichier impossible.')); r.readAsDataURL(fi); });
+        applyData(await call('addDoc', { doc: { titre, type: $('#d-type').value, matiere: $('#d-mat').value, classes, note: $('#d-note').value.trim() }, file: { name: fi.name, data } }));
+        closeModal(); toast('Document publié'); S.role === 'admin' ? renderAdmin() : renderProf();
+      } catch (x) {
+        if (/Session expirée/.test(x.message)) return expired();
+        bad(/Accès refusé|Action inconnue/.test(x.message) ? "Le serveur n'est pas encore à jour pour les documents : collez le nouveau Code.gs puis déployez une nouvelle version." : x.message);
+        b.disabled = false; b.textContent = 'Publier';
+      }
     });
   }
 
@@ -923,7 +990,7 @@
     const mine = S.sessions.filter(s => s.prof === me.nom);
     const byClass = {};
     S.students.forEach(s => { (byClass[s.classe] = byClass[s.classe] || []).push(s); });
-    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['suivi', 'Suivi des notes'], ['eleves', `Mes élèves (${S.students.length})`]];
+    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['eleves', `Mes élèves (${S.students.length})`]];
     let body = '';
     if (S.ptab === 'finances') body = `<div class="kpis">
           <div class="kpi"><span class="l">Ma part ${S.finMonth ? '· ' + monthLabel(S.finMonth) : 'depuis la rentrée'}</span><span class="v">${fcfa(myRow.share)}</span><span class="s">${String(me.parts).replace('.', ',')} part${me.parts > 1 ? 's' : ''}</span></div>
@@ -935,6 +1002,7 @@
           ${mine.length ? `<div class="tbl-wrap"><table><tbody>${mine.sort((a, b) => JOURS.indexOf(a.jour) - JOURS.indexOf(b.jour) || mins(a.debut) - mins(b.debut)).map(s => `<tr><td><b>${s.jour}</b></td><td class="num">${hfmt(s.debut)} – ${hfmt(s.fin)}</td><td><span class="pill ${esc(s.matiere)}">${esc(s.matiere)}</span></td><td>${s.classes.map(esc).join(' + ')}</td><td class="muted">${esc(s.salle)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Aucun cours attribué pour l\'instant.</p>'}</div>
         <div class="panel"><h3>Emploi du temps complet</h3><div class="week">${weekHTML(S.sessions, false, me.nom)}</div></div>`;
     else if (S.ptab === 'suivi') body = suiviPane(S.students.filter(s => s.statut !== 'abandon'), profMats);
+    else if (S.ptab === 'docs') body = docsPane();
     else body = `${(S.alerts || []).filter(a => a.type === 'groupe').map(a => `<div class="warnbox">${esc(a.msg)}</div>`).join('')}
         ${Object.keys(byClass).length ? Object.keys(byClass).sort().map(c => `<div class="panel"><h3>${esc(c)} · ${byClass[c].length} élève${byClass[c].length > 1 ? 's' : ''}</h3><div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>École d'origine</th><th class="n">Maths</th><th class="n">PC</th><th class="n">SVT</th><th>Statut</th></tr></thead><tbody>
           ${byClass[c].sort((a, b) => a.nom.localeCompare(b.nom)).map(s => { const [l, k] = STATUTS[s.statut] || ['?', 'neutral']; return `<tr><td><b>${esc(fullName(s))}</b><span class="sub num">${esc(s.num)}</span></td><td>${esc(s.etablissement) || '—'}</td><td class="n">${esc(String(s.notesMaths || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesPC || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesSVT || '—').replace('.', ','))}</td><td><span class="pill ${k}">${l}</span></td></tr>`; }).join('')}
@@ -947,7 +1015,7 @@
   /* =========================================================
      ESPACE GESTIONNAIRE
      ========================================================= */
-  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['suivi', 'Suivi des notes'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
+  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
   function renderAdmin() {
     const pending = S.students.filter(s => s.statut === 'attente').length;
     const toVal = S.payments.filter(p => p.statut === 'a_valider').length;
@@ -959,7 +1027,7 @@
   }
   function renderPane() {
     const p = $('#pane'); if (!p) return;
-    const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
+    const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), docs: docsPane, paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
     p.innerHTML = fn();
     if (S.tab === 'eleves') bindStudentFilters();
     if (S.tab === 'params') bindParams();
@@ -1506,6 +1574,10 @@
   }
   async function removeItem(kind, id, msg) { if (await mutate('remove', { kind, id }, msg)) { closeModal(); renderAdmin(); } }
 
+  document.addEventListener('change', e => {
+    const k = e.target && e.target.dataset && e.target.dataset.docf; if (!k) return;
+    S.docFilter[k] = e.target.value; S.role === 'admin' ? renderPane() : renderProf();
+  });
   /* ---------- actions (délégation) ---------- */
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-act], [data-scroll]'); if (!el) return;
@@ -1523,6 +1595,8 @@
       case 'pwd': pwdModal(); break;
       case 'close': closeModal(); break;
       case 'declare': declareModal(); break;
+      case 'add-doc': addDocModal(); break;
+      case 'del-doc': confirmThen(el, 'Confirmer ?', async () => { if (await mutate('delDoc', { id }, 'Document retiré')) S.role === 'admin' ? renderAdmin() : renderProf(); }); break;
       case 'new-student': studentModal(); break;
       case 'edit-student': studentModal(id); break;
       case 'del-student': confirmThen(el, 'Confirmer la suppression', () => removeItem('students', id, 'Élève supprimé')); break;
