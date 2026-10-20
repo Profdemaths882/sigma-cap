@@ -1,0 +1,383 @@
+\documentclass[10.5pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{fontspec}
+
+\setmainfont{Latin Modern Roman}
+\newfontfamily\titre{Inter}[UprightFont=* Bold,BoldFont=* ExtraBold]
+\usepackage[a4paper,top=1.1cm,bottom=1.35cm,left=1.4cm,right=1.4cm,headheight=0pt,footskip=0.8cm]{geometry}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{eso-pic}
+\usepackage{multicol}
+\usepackage{lastpage}\usepackage{needspace}
+
+% ---------- couleurs Sigma Cap ----------
+\definecolor{ink}{HTML}{14284B}
+\definecolor{sky}{HTML}{1F8FD0}
+\definecolor{lime}{HTML}{6FA82F}
+\definecolor{gold}{HTML}{D99A1E}
+\definecolor{rouge}{HTML}{C0392B}
+\definecolor{violet}{HTML}{6C3FB5}
+\definecolor{fond}{HTML}{F2F5F9}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\renewcommand{\arraystretch}{1.15}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+
+% ---------- filigrane ----------
+\AddToShipoutPictureBG{%
+  \AtPageCenter{\makebox(0,0){\rotatebox{50}{\fontsize{78}{78}\selectfont\bfseries\color{ink!6}SIGMA CAP}}}%
+  \AtPageLowerLeft{\put(\LenToUnit{0.5\paperwidth},\LenToUnit{0.28\paperheight}){\makebox(0,0){\rotatebox{50}{\fontsize{30}{30}\selectfont\bfseries\color{sky!8}PROFDEMATHS 2.0}}}}%
+  \AtPageUpperLeft{\put(0,\LenToUnit{-0.35cm}){\color{ink}\rule{\paperwidth}{0.35cm}}}%
+  \AtPageLowerLeft{\put(0,0){\color{lime}\rule{\paperwidth}{0.18cm}}}%
+}
+
+% ---------- pied de page ----------
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\scriptsize\color{ink}\textbf{Sigma Cap} -- Vers la réussite · CEM Kennedy}
+\fancyfoot[C]{\scriptsize\color{ink!70}TD n°1 · Calcul dans $\R$ · 2nde S}
+\fancyfoot[R]{\scriptsize\color{ink}\textbf{\thepage/\pageref{LastPage}}}
+
+% ---------- puces colorées ----------
+\setlist[itemize]{leftmargin=1.1em,itemsep=1pt,topsep=2pt,label={\color{sky}\small$\blacktriangleright$}}
+\DeclareRobustCommand{\pucenum}[1]{\tikz[baseline=(n.base)]\node[circle,fill=sky,text=white,inner sep=1.3pt,minimum size=1.15em,font=\footnotesize\bfseries](n){#1};}
+\setlist[enumerate,1]{leftmargin=1.6em,itemsep=1pt,topsep=1pt,label={\pucenum{\arabic*}}}
+\setlist[enumerate,2]{leftmargin=1.5em,itemsep=1pt,topsep=1pt,label={\color{gold}\bfseries\alph*)}}
+
+% ---------- cadres ----------
+\newcounter{exo}
+\newtcolorbox{exo}[3][]{enhanced,breakable,colback=white,colframe=#2,boxrule=0.9pt,arc=2.5mm,
+  left=7pt,right=7pt,top=5pt,bottom=4pt,before skip=3.5pt,after skip=3pt,
+  fonttitle=\bfseries\small,coltitle=white,colbacktitle=#2,
+  title={\stepcounter{exo}Exercice \theexo\ \ \textcolor{white!85!#2}{\textbullet}\ \ #3},
+  attach boxed title to top left={xshift=8pt,yshift=-2.2mm},
+  boxed title style={arc=1.5mm,boxrule=0pt},#1}
+
+\newcommand{\partie}[3]{\needspace{7\baselineskip}\vspace{3pt}%
+  \begin{tcolorbox}[enhanced,colback=#1,colframe=#1,arc=1.5mm,boxrule=0pt,left=6pt,right=6pt,top=2.5pt,bottom=2.5pt,before skip=4pt,after skip=3pt]
+  {\color{white}\bfseries\large #2}\hfill{\color{white}\small\itshape #3}
+  \end{tcolorbox}}
+
+\newcommand{\demo}{\tikz[baseline=-0.6ex]\node[fill=violet,text=white,rounded corners=1.5pt,inner sep=1.6pt,font=\scriptsize\bfseries]{DÉMONSTRATION};}
+\newcommand{\etoiles}[1]{{\color{gold}\ifcase#1\or$\star$\or$\star\star$\or$\star\star\star$\fi}}
+
+% bulle avec la photo de M. Thiam
+\newcommand{\bulle}[1]{%
+  \begin{tcolorbox}[enhanced,colback=gold!9,colframe=gold!80!black,boxrule=0.6pt,arc=3mm,
+    left=34pt,right=6pt,top=3pt,bottom=3pt,before skip=4pt,after skip=2pt,fontupper=\small,
+    overlay={\node[anchor=west] at ([xshift=2pt]frame.west) {\includegraphics[width=26pt]{thiam-rond.png}};}]
+  #1\end{tcolorbox}}
+
+\begin{document}
+
+% ================= EN-TÊTE =================
+\vspace*{-2pt}
+\begin{tcolorbox}[enhanced,colback=fond,colframe=ink,boxrule=1pt,arc=3mm,left=6pt,right=6pt,top=4pt,bottom=4pt]
+\begin{minipage}[c]{0.15\textwidth}\centering\includegraphics[height=2.25cm]{logo-full.jpg}\end{minipage}%
+\begin{minipage}[c]{0.70\textwidth}\centering
+  {\small\color{sky}\bfseries COURS DE RENFORCEMENT · ANNÉE SCOLAIRE 2026 -- 2027}\\[3pt]
+  {\LARGE\color{ink}\bfseries FICHE DE TD N°1}\\[2pt]
+  {\Large\color{ink}\bfseries CALCUL DANS $\boldsymbol{\R}$}\\[4pt]
+  \tikz\node[fill=lime,text=white,rounded corners=2pt,inner sep=3pt,font=\small\bfseries]{Classe~: 2nde S};\
+  \tikz\node[fill=sky,text=white,rounded corners=2pt,inner sep=3pt,font=\small\bfseries]{Prof~: M. Racine Thiam};\
+  \tikz\node[fill=gold,text=white,rounded corners=2pt,inner sep=3pt,font=\small\bfseries]{CEM Kennedy};
+\end{minipage}%
+\begin{minipage}[c]{0.15\textwidth}\centering\includegraphics[height=2.25cm]{profdemaths.jpg}\end{minipage}
+\end{tcolorbox}
+
+\begin{tcolorbox}[enhanced,colback=sky!6,colframe=sky,boxrule=0.7pt,arc=2mm,left=6pt,right=6pt,top=3pt,bottom=3pt,
+  title={\bfseries\small Compétences travaillées dans cette fiche},fonttitle=\small,colbacktitle=sky,coltitle=white,
+  attach boxed title to top left={xshift=8pt,yshift=-2mm},boxed title style={arc=1mm,boxrule=0pt},top=6pt]
+\small
+\begin{multicols}{2}
+\begin{itemize}
+  \item Calculer avec les \textbf{puissances} et l'écriture scientifique.
+  \item Utiliser les \textbf{identités remarquables} pour développer et factoriser.
+  \item Simplifier des \textbf{radicaux}, utiliser l'\textbf{expression conjuguée}.
+  \item Écrire sans \textbf{valeur absolue}, traduire une \textbf{distance} en intervalle.
+  \item Comparer, \textbf{encadrer} et donner une \textbf{valeur approchée}.
+  \item \textbf{Démontrer}~: inégalités, irrationalité, égalités.
+\end{itemize}
+\end{multicols}
+\vspace{-6pt}
+{\footnotesize\color{ink!80}Niveau~: \etoiles1\ application directe \quad \etoiles2\ entraînement \quad \etoiles3\ approfondissement \qquad \demo\ exercice de raisonnement}
+\end{tcolorbox}
+
+% ================= PARTIE A =================
+\partie{ink}{A · Puissances et identités remarquables}{« Les règles d'abord, la calculatrice ensuite »}
+
+\begin{exo}{ink}{Puissances et écriture scientifique \etoiles1}
+Sans calculatrice, écrire chaque nombre sous la forme $\pm\,2^m\times 3^n$ ($m,n\in\Z$), puis donner l'écriture scientifique de $D$~:
+\[
+A=\frac{(2^{3}\times 3^{-2})^{2}}{6^{-1}\times 2^{5}}\qquad
+B=\frac{(-6)^{4}\times 9^{-3}}{(-2)^{5}\times 12^{-1}}\qquad
+C=\frac{8^{2}\times 27^{-1}\times 6^{3}}{(18)^{2}}\qquad
+D=\frac{0{,}00042\times 10^{5}\times 3\times 10^{-2}}{7\times 10^{-3}}
+\]
+\end{exo}
+
+\begin{exo}{ink}{Puissances qui font peur (mais pas à toi) \etoiles2}
+Simplifier au maximum, sans calculatrice ($n$ désigne un entier naturel)~:
+\[
+A=\frac{2^{2026}+2^{2025}}{2^{2024}-2^{2023}}\qquad
+B=\frac{3^{n+2}-3^{n}}{3^{n+1}+3^{n}}\qquad
+C=\frac{5^{12}\times 2^{10}-5^{10}\times 2^{12}}{10^{10}}\qquad
+D=\frac{\big((-2)^{3}\big)^{-2}\times(-4)^{3}}{8^{-1}}
+\]
+\[
+E=\frac{(0{,}25)^{-3}\times 8^{-2}}{\left(2^{-1}\right)^{5}}\qquad
+F=\frac{9^{n+1}\times 4^{n}}{6^{2n+1}}\qquad
+G=\frac{2^{n+3}\times 5^{n+1}}{10^{n}}\qquad
+H=\sqrt{\frac{2^{20}+2^{20}+2^{20}+2^{20}}{4^{9}}}
+\]
+\begin{enumerate}
+  \item Sans calculatrice, comparer $2^{300}$ et $3^{200}$ \quad {\small(écrire chacun comme une puissance $100$-ième)}.
+  \item Combien de chiffres compte l'écriture décimale de $N=2^{12}\times 5^{15}$~? Quel est son premier chiffre~?
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Ne panique pas devant $2^{2026}$~!} On \textbf{met en facteur la plus petite puissance}~: $2^{2026}+2^{2025}=2^{2025}(2+1)$. Pareil avec $3^n$~: tout se simplifie. Et pense à écrire $4=2^2$, $8=2^3$, $9=3^2$, $6=2\times3$…}
+
+\begin{exo}{ink}{Fractions en cascade \etoiles2}
+\begin{enumerate}
+  \item Calculer et donner le résultat sous forme irréductible~:
+  \[ A=\frac{1}{1+\dfrac{1}{1+\dfrac12}}\qquad
+     B=\frac{\dfrac23-\dfrac34}{\dfrac56+\dfrac1{12}}\qquad
+     C=\left(1-\frac12\right)\left(1-\frac13\right)\left(1-\frac14\right)\cdots\left(1-\frac1{100}\right)\qquad
+     D=\frac{\dfrac{1}{3}+\dfrac{1}{5}}{1-\dfrac{1}{3}\times\dfrac{1}{5}} \]
+  \item \demo\ Démontrer que pour tout entier $k\geq1$~: $\dfrac{1}{k(k+1)}=\dfrac1k-\dfrac1{k+1}$. En déduire la valeur de \ $S=\dfrac1{1\times2}+\dfrac1{2\times3}+\dfrac1{3\times4}+\cdots+\dfrac1{99\times100}$.
+  \item Pour $x\neq1$ et $x\neq-1$, simplifier \ $\dfrac{x}{x-1}-\dfrac{1}{x+1}-\dfrac{2}{x^2-1}$. \ Surprise~!
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Les identités remarquables, carrés et cubes \demo\ \etoiles2}
+Soient $a$, $b$ et $c$ trois réels. \textbf{Démontrer} chacune des égalités suivantes.
+\begin{enumerate}
+  \item $(a+b+c)^2=a^2+b^2+c^2+2ab+2ac+2bc$ \quad {\small(on pourra poser $X=a+b$)}.
+  \item $(a+b)^3=a^3+3a^2b+3ab^2+b^3$ \quad {\small(écrire $(a+b)^3=(a+b)^2(a+b)$)}. \ En déduire $(a-b)^3=a^3-3a^2b+3ab^2-b^3$.
+  \item $a^3-b^3=(a-b)(a^2+ab+b^2)$ \ et \ $a^3+b^3=(a+b)(a^2-ab+b^2)$ \quad {\small(développer le membre de droite)}.
+  \item \textbf{Prolongement~:} montrer que $(a+b)^3-(a-b)^3=6a^2b+2b^3$, puis calculer $1001^3-999^3$ sans calculatrice.
+  \item \textbf{Défi~:} on suppose $a+b+c=0$. En écrivant $c=-(a+b)$, démontrer que \ $a^3+b^3+c^3=3abc$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Astuce du prof~:} pour obtenir $(a-b)^3$, inutile de tout refaire~: remplace $b$ par $(-b)$ dans $(a+b)^3$. Même astuce pour passer de $a^3-b^3$ à $a^3+b^3$~! Et retiens les signes~: dans $a^3-b^3=(a-b)(a^2+ab+b^2)$, le signe « $-$ » n'apparaît qu'une fois.}
+
+\begin{exo}{ink}{Développer, factoriser \etoiles2}
+\begin{enumerate}
+  \item Développer et réduire~: $(2x-3)^2$~; \ $(x+2y-1)^2$~; \ $(x+2)^3$~; \ $(1-2x)^3$~; \ $(x+\sqrt2)^3$.
+  \item Factoriser~: $9x^2-12x+4$~; \ $x^2-7$~; \ $(x+1)^2-(2x-3)^2$~; \ $x^3-8$~; \ $8x^3+27$~; \ $x^3+3x^2+3x+1$.
+  \item On pose $E=(3x-1)^2-(x+5)^2$. Développer, puis factoriser $E$. Choisir la forme la plus adaptée pour calculer $E$ pour $x=0$, $x=3$ et $x=\sqrt2$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Le carré, meilleur ami des inégalités \demo\ \etoiles2}
+Soient $a$ et $b$ deux réels.
+\begin{enumerate}
+  \item Développer $(a-b)^2$. En déduire que \ $a^2+b^2\geq 2ab$. \ Dans quel cas a-t-on l'égalité~?
+  \item On suppose $a>0$ et $b>0$. Démontrer que \ $\dfrac ab+\dfrac ba\geq 2$.
+  \item En déduire que pour tous réels $a>0$ et $b>0$~: \ $(a+b)\left(\dfrac1a+\dfrac1b\right)\geq 4$.
+  \item Démontrer que pour tous réels $a$, $b$, $c$~: \ $a^2+b^2+c^2\geq ab+bc+ca$ \quad {\small(calculer $(a-b)^2+(b-c)^2+(c-a)^2$)}.
+  \item \textbf{Identité de Lagrange~:} démontrer que $(a^2+b^2)(c^2+d^2)=(ac+bd)^2+(ad-bc)^2$, puis en déduire que $(ac+bd)^2\leq(a^2+b^2)(c^2+d^2)$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Astuce du prof~:} pour montrer que $X\geq Y$, on étudie le \textbf{signe de $X-Y$}. Un carré est toujours positif~: c'est l'outil n°1~! Et pour la question 3, développe d'abord, puis réutilise la question 2 sans tout refaire.}
+
+% ================= PARTIE B =================
+\partie{lime!80!black}{B · Racines carrées et radicaux}{« Un radical bien rangé ne fait pas peur »}
+
+\begin{exo}{lime!80!black}{Simplifier, rendre rationnel \etoiles1}
+\begin{enumerate}
+  \item Écrire sous la forme $a\sqrt b$ ($b$ entier le plus petit possible)~: \ $\sqrt{50}-3\sqrt8+\sqrt{18}$~; \ $\sqrt{12}\times\sqrt{27}$~; \ $2\sqrt{75}-\sqrt{48}+\sqrt{300}$.
+  \item Développer~: \ $(2\sqrt3-1)^2$~; \ $(\sqrt5+\sqrt2)(\sqrt5-\sqrt2)$~; \ $(1+\sqrt2)^3$.
+  \item Écrire sans radical au dénominateur~: \ $\dfrac{1}{\sqrt5-2}$~; \ $\dfrac{3+\sqrt2}{3-\sqrt2}$~; \ $\dfrac{\sqrt3}{2\sqrt3+3}$~; \ $\dfrac{1}{\sqrt2+\sqrt3}-\dfrac{1}{\sqrt3-\sqrt2}$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Deux nombres conjugués \demo\ \etoiles2}
+On pose \ $A=2+\sqrt3$ \ et \ $B=2-\sqrt3$.
+\begin{enumerate}
+  \item Calculer $A^2$, $B^2$ et $A\times B$.
+  \item Montrer que $\dfrac AB+\dfrac BA$ est un entier naturel.
+  \item Justifier que $B>0$. En déduire la valeur de \ $\sqrt{7-4\sqrt3}$, \ puis celle de \ $\sqrt{7+4\sqrt3}-\sqrt{7-4\sqrt3}$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Ne te fatigue pas pour rien~:} à la question 2, réduis au même dénominateur, $\dfrac{A^2+B^2}{A\times B}$, puis \textbf{réutilise les résultats de la question 1}. Inutile de remplacer $A$ et $B$ par leurs expressions~! Et à la question 3, souviens-toi~: $\sqrt{x^2}=|x|$, jamais directement $x$.}
+
+\begin{exo}{lime!80!black}{Radicaux emboîtés et calculs costauds \etoiles3}
+\begin{enumerate}
+  \item Calculer $(1+\sqrt5)^2$ et $(3-\sqrt2)^2$. En déduire une écriture simplifiée de \ $\sqrt{6+2\sqrt5}$ \ et \ $\sqrt{11-6\sqrt2}$.
+  \item Calculer \ $A=\dfrac{\sqrt3+1}{\sqrt3-1}+\dfrac{\sqrt3-1}{\sqrt3+1}$ \ et \ $B=\left(\sqrt{3+\sqrt5}-\sqrt{3-\sqrt5}\right)^2$.
+  \item Écrire sans radical au dénominateur \ $\dfrac{1}{1+\sqrt2+\sqrt3}$ \quad {\small(multiplier d'abord par $1+\sqrt2-\sqrt3$)}.
+  \item \demo\ On pose $x=\sqrt{4+\sqrt7}-\sqrt{4-\sqrt7}$. Justifier que $x>0$, calculer $x^2$ et en déduire que $x=\sqrt2$.
+  \item \demo\ Démontrer que \ $\sqrt{2+\sqrt3}=\dfrac{\sqrt6+\sqrt2}{2}$, \ puis calculer \ $\sqrt{2+\sqrt3}\times\sqrt{2+\sqrt{2+\sqrt3}}\times\sqrt{2-\sqrt{2+\sqrt3}}$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Méthode des radicaux emboîtés~:} pour simplifier $\sqrt{p+q\sqrt r}$, cherche un carré $(\alpha+\beta\sqrt r)^2$ qui lui est égal. Et quand un nombre $x$ est une différence de radicaux, calcule $x^2$~: les radicaux s'en vont~! N'oublie pas le signe de $x$ avant de conclure.}
+
+\begin{exo}{lime!80!black}{$\sqrt2$ n'est pas une fraction \demo\ \etoiles3}
+On veut démontrer \textbf{par l'absurde} que $\sqrt2$ est irrationnel. On suppose qu'il existe deux entiers naturels non nuls $p$ et $q$, \textbf{premiers entre eux} (fraction irréductible), tels que $\sqrt2=\dfrac pq$.
+\begin{enumerate}
+  \item Montrer que $p^2=2q^2$. En déduire que $p^2$ est pair.
+  \item Démontrer que si $p$ est impair, alors $p^2$ est impair. Conclure que $p$ est pair.
+  \item On écrit alors $p=2k$ ($k\in\N$). Montrer que $q^2=2k^2$, puis que $q$ est pair.
+  \item Pourquoi est-ce impossible~? Conclure.
+  \item \textbf{Prolongement~:} en raisonnant encore par l'absurde, démontrer que $3\sqrt2-1$ est irrationnel.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{La somme qui s'effondre \demo\ \etoiles3}
+\begin{enumerate}
+  \item Démontrer que pour tout entier naturel $k$~: \ $\dfrac{1}{\sqrt{k+1}+\sqrt k}=\sqrt{k+1}-\sqrt k$.
+  \item En déduire la valeur exacte de \
+  $S=\dfrac{1}{\sqrt1+\sqrt2}+\dfrac{1}{\sqrt2+\sqrt3}+\dfrac{1}{\sqrt3+\sqrt4}+\cdots+\dfrac{1}{\sqrt{99}+\sqrt{100}}$.
+  \item \textbf{Bonus~:} sans calculatrice, comparer $\sqrt{101}-\sqrt{100}$ et $\sqrt{100}-\sqrt{99}$.
+  \end{enumerate}
+\end{exo}
+\bulle{\textbf{Effet domino~:} écris les premiers termes de $S$ à l'aide de la question 1 et observe… presque tout se simplifie deux à deux~! Il ne reste que le premier et le dernier. Une somme de 99 termes calculée en une ligne~: la classe~!}
+
+% ================= PARTIE C =================
+\partie{sky}{C · Valeur absolue, distance et intervalles}{« $|x|$~: la distance de $x$ à zéro »}
+
+\begin{exo}{sky}{Écrire sans valeur absolue \etoiles2}
+\begin{enumerate}
+  \item Écrire sans valeur absolue~: \ $|\sqrt3-2|$~; \ $|\pi-3|$~; \ $|1-\sqrt2|+|\sqrt2-3|$~; \ $|2\sqrt5-3\sqrt2|$.
+  \item Écrire $|x-3|$ sans valeur absolue selon les valeurs du réel $x$.
+  \item Soit $f(x)=|x-1|+|x+2|$. Écrire $f(x)$ sans valeur absolue sur chacun des intervalles $]-\infty\,;-2]$, $[-2\,;1]$ et $[1\,;+\infty[$ (on pourra faire un tableau). Résoudre ensuite $f(x)=5$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Distance, intervalles, équations \etoiles2}
+\begin{enumerate}
+  \item Traduire par un intervalle (ou une réunion d'intervalles) et représenter sur une droite graduée~:
+  \[ |x-2|\leq 3 \qquad |x+1|>2 \qquad d(x\,;5)<0{,}1 \qquad |2x-1|\leq 5 \]
+  \item Inversement, traduire à l'aide d'une valeur absolue~: \ $x\in[-3\,;7]$ \ et \ $x\in\,]-\infty\,;-1[\,\cup\,]5\,;+\infty[$.
+  \item Résoudre dans $\R$~: \ $|2x-1|=|x+3|$ \ ; \ $|x-4|=2x+1$ \ ; \ $|3-x|\geq 2$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{L'inégalité triangulaire \demo\ \etoiles3}
+Soient $a$ et $b$ deux réels.
+\begin{enumerate}
+  \item Justifier que $|a|^2=a^2$ et que $ab\leq|ab|=|a|\,|b|$.
+  \item Comparer $|a+b|^2$ et $(|a|+|b|)^2$. En déduire l'inégalité triangulaire~: \ $|a+b|\leq|a|+|b|$.
+  \item En écrivant $a=(a-b)+b$, démontrer que \ $|a|-|b|\leq|a-b|$, \ puis que \ $\big||a|-|b|\big|\leq|a-b|$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Réflexe~:} deux nombres \textbf{positifs} sont rangés dans le même ordre que leurs carrés. C'est pour ça qu'on compare les carrés à la question 2. Mais attention~: ça ne marche que s'ils sont positifs~!}
+
+% ================= PARTIE D =================
+\partie{rouge}{D · Ordre, encadrement et approximation}{« Encadrer, c'est cerner sa cible »}
+
+\begin{exo}{rouge}{Encadrer et approcher \etoiles2}
+On donne~: \ $1{,}414<\sqrt2<1{,}415$ \ et \ $1{,}732<\sqrt3<1{,}733$.
+\begin{enumerate}
+  \item Donner un encadrement de~: \ $\sqrt2+\sqrt3$~; \ $\sqrt3-\sqrt2$~; \ $\sqrt6$~; \ $\dfrac1{\sqrt2}$~; \ $2\sqrt3-3\sqrt2$. 
+  \item En déduire une valeur approchée à $10^{-2}$ près par défaut de $\sqrt2+\sqrt3$.
+  \item Sachant que $\dfrac1{\sqrt3-\sqrt2}=\sqrt3+\sqrt2$, donner un encadrement de $\dfrac1{\sqrt3-\sqrt2}$ \textbf{sans diviser}.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{rouge}{Comparer sans calculatrice \etoiles2}
+Comparer (on pourra comparer les carrés de nombres positifs)~: \ $2\sqrt3$ et $3\sqrt2$~; \ $\sqrt5+\sqrt7$ et $2\sqrt6$~; \ $\sqrt2+\sqrt6$ et $\sqrt3+\sqrt5$~; \ $\frac{\sqrt5-1}{2}$ et $\frac23$.
+\end{exo}
+
+\begin{exo}{violet}{Problème de synthèse~: moyennes et rectangles \demo\ \etoiles3}
+Soient $a$ et $b$ deux réels \textbf{positifs}.
+\begin{enumerate}
+  \item Développer $\left(\sqrt a-\sqrt b\right)^2$. En déduire que \ $\sqrt{ab}\leq\dfrac{a+b}{2}$.
+  \item Démontrer que \ $\sqrt{a+b}\leq\sqrt a+\sqrt b$. \ Pour quelles valeurs a-t-on l'égalité~?
+  \item \textbf{Application~:} un rectangle a un périmètre de $20$\,cm. On note $x$ et $y$ ses dimensions.
+  \begin{enumerate}
+    \item Exprimer $x+y$, puis montrer que son aire $\mathcal A$ vérifie $\mathcal A\leq 25$.
+    \item Pour quelles dimensions l'aire est-elle maximale~? Quelle est alors la nature du rectangle~?
+  \end{enumerate}
+\end{enumerate}
+\end{exo}
+\begin{exo}{violet}{Vrai ou faux~? Justifier \demo\ \etoiles2}
+Vraie ou fausse~? \textbf{Justifier} (démonstration si vraie, contre-exemple si fausse).
+\begin{multicols}{2}
+\begin{enumerate}
+  \item Pour tous réels $a$ et $b$~: $\sqrt{a^2+b^2}=a+b$.
+  \item Pour tous réels $a$ et $b$~: si $a^2=b^2$, alors $a=b$.
+  \item Pour tout réel $x$~: $|x|\geq x$.
+  \item Pour tous réels $x$ et $y$~: si $x<y$, alors $x^2<y^2$.
+  \item La somme de deux irrationnels est irrationnelle.
+  \item Pour tout réel $x$~: $\sqrt{x^2}=x$.
+\end{enumerate}
+\end{multicols}
+\end{exo}
+\bulle{\textbf{Règle d'or~:} \textbf{fausse}~? un seul contre-exemple suffit. \textbf{Vraie}~? il faut une démonstration valable pour \textbf{tous} les réels.}
+
+\begin{exo}{rouge}{Défi Sigma Cap \demo\ \etoiles3}
+\begin{enumerate}
+  \item Calculer $(1+\sqrt2)^2$ et $(\sqrt2-1)^2$. En déduire que \ $\sqrt{3+2\sqrt2}-\sqrt{3-2\sqrt2}=2$.
+  \item Soit $n$ un entier naturel non nul.
+  \begin{enumerate}
+    \item Démontrer que \ $\sqrt{n+1}-\sqrt n=\dfrac{1}{\sqrt{n+1}+\sqrt n}$ \ et en déduire que \ $\sqrt{n+1}-\sqrt n<\dfrac{1}{2\sqrt n}$.
+    \item De même, démontrer que \ $\dfrac{1}{2\sqrt n}<\sqrt n-\sqrt{n-1}$.
+    \item \textbf{Application~:} sans calculatrice, encadrer $\dfrac{1}{2\sqrt{100}}$ par deux radicaux, puis en déduire que $\sqrt{101}<10{,}05$.
+  \end{enumerate}
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Le grand mélange, spécial devoir \demo\ \etoiles3}
+\begin{enumerate}
+  \item Calculer~: \ $X=\left(2^{-1}+3^{-1}\right)^{-1}$~; \ $Y=\dfrac{\sqrt{12}-\sqrt{27}+\sqrt{75}}{\sqrt3}$~; \ $Z=\dfrac{10^{-3}\times\left(10^{2}\right)^{-4}}{\left(10^{-5}\right)^{3}}$. \ Ranger dans l'ordre croissant~: $2\sqrt7$, $5$, $3\sqrt3$, $\dfrac{11}{2}$.
+  \item On pose $\varphi=\dfrac{1+\sqrt5}{2}$ (le \textbf{nombre d'or}). Démontrer que $\varphi^2=\varphi+1$, puis en déduire, \textbf{sans remplacer} $\varphi$ par sa valeur, que $\dfrac1\varphi=\varphi-1$ \ et \ $\varphi^3=2\varphi+1$.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE E =================
+\partie{violet}{E · Démonstrations~: le niveau au-dessus}{« Démontrer, c'est convaincre sans calculatrice »}
+
+\begin{exo}{violet}{Les sommes célèbres \demo\ \etoiles3}
+Soit $n$ un entier naturel non nul.
+\begin{enumerate}
+  \item Démontrer que pour tout entier $k$~: \ $(k+1)^2-k^2=2k+1$.
+  \item Écrire cette égalité pour $k=1,2,\dots,n$ et additionner membre à membre. En déduire que \ $1+2+3+\cdots+n=\dfrac{n(n+1)}{2}$.
+  \item Démontrer que \ $(k+1)^3-k^3=3k^2+3k+1$. En procédant de la même façon, démontrer que
+  \[ 1^2+2^2+3^2+\cdots+n^2=\frac{n(n+1)(2n+1)}{6}. \]
+  \item Vérifier la formule pour $n=3$, puis calculer $1^2+2^2+\cdots+20^2$ et $1+3+5+\cdots+99$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Le secret~:} en additionnant les égalités $(k+1)^2-k^2=2k+1$, le membre de gauche « s'effondre » comme à l'exercice 11~: il ne reste que $(n+1)^2-1^2$. C'est la même idée télescopique, avec les identités remarquables du début de la fiche~!}
+
+\begin{exo}{violet}{Carrés cachés \demo\ \etoiles2}
+\begin{enumerate}
+  \item Développer $(x^2+px+q)^2$ ($p$ et $q$ réels). En déduire des réels $p$ et $q$ tels que \ $x^4+6x^3+7x^2-6x+1=(x^2+px+q)^2$ pour tout réel $x$.
+  \item Soit $n$ un entier naturel. Développer $n(n+3)$ et $(n+1)(n+2)$, puis démontrer que
+  \[ n(n+1)(n+2)(n+3)+1=\left(n^2+3n+1\right)^2. \]
+  En déduire que le produit de quatre entiers consécutifs, augmenté de $1$, est toujours un carré parfait. Vérifier avec $5\times6\times7\times8+1$.
+  \item Démontrer que pour tout réel $x$~: \ $x^2-x+1=\left(x-\dfrac12\right)^2+\dfrac34$. \ En déduire que $x^2-x+1>0$ pour tout réel $x$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Le point qui minimise \demo\ \etoiles3}
+Soient $a$, $b$, $c$, $d$ quatre réels et $m=\dfrac{a+b+c+d}{4}$ leur moyenne. Pour tout réel $x$, on pose
+\[ S(x)=(x-a)^2+(x-b)^2+(x-c)^2+(x-d)^2. \]
+\begin{enumerate}
+  \item Démontrer que \ $S(x)=4x^2-8mx+\left(a^2+b^2+c^2+d^2\right)$, \ puis que \ $S(x)=4(x-m)^2+S(m)$.
+  \item En déduire que $S(x)\geq S(m)$ pour tout réel $x$. Pour quelle valeur de $x$ la somme $S(x)$ est-elle minimale~?
+  \item \textbf{Application~:} quatre élèves ont obtenu $8$, $11$, $13$ et $16$. Quelle « note de référence » $x$ rend minimale la somme des carrés des écarts~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Irrationnels et inégalités \demo\ \etoiles3}
+\begin{enumerate}
+  \item En s'inspirant de l'exercice 10, démontrer par l'absurde que $\sqrt3$ est irrationnel \quad {\small(si $p^2$ est multiple de $3$, alors $p$ aussi~: le justifier en étudiant $p=3k+1$ et $p=3k+2$)}.
+  \item On admet que $\sqrt6$ est irrationnel. Calculer $\left(\sqrt2+\sqrt3\right)^2$ et en déduire que $\sqrt2+\sqrt3$ est irrationnel.
+  \item Soient $a$, $b$, $c$ trois réels strictement positifs. En utilisant l'exercice 17 ($a+b\geq2\sqrt{ab}$…), démontrer que \ $(a+b)(b+c)(c+a)\geq 8abc$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Raisonnement par l'absurde~:} on suppose le contraire de ce qu'on veut prouver, on enchaîne des déductions justes… et on tombe sur une contradiction. Conclusion~: la supposition était fausse. Pour $\sqrt2+\sqrt3$, pense « si $x$ est rationnel, alors $x^2$ aussi, donc $\dfrac{x^2-5}{2}=\sqrt6$ aussi »~!}
+
+\bulle{\textbf{Le mot de la fin~:} chaque ligne d'une démonstration se justifie (« on sait que », « or », « donc »). La réussite se construit exercice après exercice~! \hfill\textbf{M. Thiam}}
+
+\end{document}
