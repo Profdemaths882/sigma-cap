@@ -26,6 +26,18 @@ window.SIGMA_DEFAULTS = {
     paiement: "Wave ou Orange Money au 78 12 89 833 (M. Thiam), ou en espèces auprès de M. Thiam ou de M. Faye.",
     relance:"Bonjour, ici Sigma Cap. La mensualité de {mois} pour {eleve} ({classe}) reste à régler : {reste}. Merci !"
   },
+  // Documents intégrés au site (dossier docs/) : visibles par les élèves inscrits de la classe et de la matière
+  docs: [
+    { id: "st-2s-1", titre: "Cours – Calcul dans ℝ", type: "Cours", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/cours-calcul-dans-R.pdf", taille: 207440, par: "Sigma Cap", note: "M. I.H. Diallo · puissances, identités remarquables, radicaux, valeur absolue, équations et inéquations", fixe: true },
+    { id: "st-2s-2", titre: "Cours et exercices de mathématiques – Seconde", type: "Cours", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/cours-et-exercices-seconde.pdf", taille: 1430672, par: "Sigma Cap", note: "65 pages · programme français : vecteurs, fonctions, statistiques, probabilités, trigonométrie", fixe: true },
+    { id: "st-2s-3", titre: "Recueil d'exercices 2nde S – tous les chapitres", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/recueil-exercices-2nde-S.pdf", taille: 3597185, par: "Sigma Cap", note: "55 pages · calcul dans ℝ, polynômes, vecteurs, barycentre, angles et trigonométrie…", fixe: true },
+    { id: "st-2s-4", titre: "TD n°6 – Repérage cartésien", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/td6-reperage-cartesien.pdf", taille: 350654, par: "Sigma Cap", note: "M. Sow · Lycée ex-CEM Missirah Wadène", fixe: true },
+    { id: "st-2s-5", titre: "TD n°7 – Polynômes et fractions rationnelles", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/td7-polynomes-fractions-rationnelles.pdf", taille: 293749, par: "Sigma Cap", note: "M. Sow · Lycée ex-CEM Missirah Wadène", fixe: true },
+    { id: "st-2s-6", titre: "Série n°2 – Calcul vectoriel et barycentre", type: "Fiche d'exercices", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/serie2-calcul-vectoriel-barycentre.pdf", taille: 253355, par: "Sigma Cap", note: "Lycée d'excellence Birago Diop", fixe: true },
+    { id: "st-2s-7", titre: "Devoir n°1 du 1er semestre (3 h)", type: "Évaluation", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/devoir1-semestre1-bambey.pdf", taille: 142391, par: "Sigma Cap", note: "Lycée de Bambey Sérère · équations et inéquations", fixe: true },
+    { id: "st-2s-8", titre: "Devoir n°1 du 2nd semestre (4 h)", type: "Évaluation", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/devoir1-semestre2-lao.pdf", taille: 640446, par: "Sigma Cap", note: "Lycée Aéré Lao · équations, inéquations, systèmes", fixe: true },
+    { id: "st-2s-9", titre: "Composition du 2nd semestre (3 h)", type: "Évaluation", matiere: "Maths", classes: ["2nde S"], date: "2026-10-20", url: "docs/2nde-S/composition-semestre2-jules-sagna.pdf", taille: 109645, par: "Sigma Cap", note: "Lycée Jules Sagna · polynômes, droites", fixe: true }
+  ],
   teachers: [
     { id: "t-thiam", nom: "M. Racine Thiam", matiere: "Maths", tel: "78 12 89 833", statut: "actif", parts: 1, role: "admin", login: "thiam", note: "Associé · ProfDeMaths 2.0" },
     { id: "t-faye", nom: "M. Faye", matiere: "Maths", tel: "77 421 05 26", statut: "actif", parts: 1, role: "admin", login: "faye", note: "Associé · Lycée Kennedy" },

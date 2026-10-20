@@ -828,25 +828,27 @@
   const DOC_TYPES = ["Fiche d'exercices", 'Évaluation', 'Corrigé', 'Cours'];
   const DOC_ICON = { "Fiche d'exercices": '📝', 'Évaluation': '🧪', 'Corrigé': '✅', 'Cours': '📘' };
   const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' Ko';
+  // documents intégrés au site (data.js) + documents déposés (serveur)
+  const allDocs = () => [...(S.docs || []), ...(DEF.docs || []).map(x => Object.assign({}, x))];
   function docRow(d, canDel) {
     return `<li class="doc"><span class="doc-ic" aria-hidden="true">${DOC_ICON[d.type] || '📄'}</span>
       <div class="doc-b"><b>${esc(d.titre)}</b>
         <span class="doc-m"><span class="pill ${esc(d.matiere)}">${esc(d.matiere)}</span> <span class="pill neutral">${esc(d.type)}</span> ${d.classes.map(esc).join(', ')}</span>
-        <span class="small muted">${esc(dateLabel(d.date))}${d.par ? ' · ' + esc(d.par) : ''}${d.taille ? ' · ' + kb(+d.taille) : ''}</span>
+        <span class="small muted">${esc(dateLabel(d.date))}${d.par ? ' · ' + esc(d.par) : ''}${d.fixe && S.role !== 'eleve' ? ' · intégré au site' : ''}${d.taille ? ' · ' + kb(+d.taille) : ''}</span>
         ${d.note ? `<span class="small">${esc(d.note)}</span>` : ''}</div>
       <div class="doc-a"><a class="btn sm primary" href="${esc(d.url)}" target="_blank" rel="noopener">Ouvrir</a>${canDel ? `<button class="btn sm ghost" data-act="del-doc" data-id="${esc(d.id)}">Retirer</button>` : ''}</div></li>`;
   }
   function docsPane() {
-    const f = S.docFilter, docs = S.docs || [];
+    const f = S.docFilter, docs = allDocs();
     const vis = docs.filter(d => (!f.classe || d.classes.includes(f.classe)) && (!f.mat || d.matiere === f.mat) && (!f.type || d.type === f.type));
-    const canDel = d => S.role === 'admin' || (S.me && d.parId === S.me.id);
+    const canDel = d => !d.fixe && (S.role === 'admin' || (S.me && d.parId === S.me.id));
     const sel = (k, label, opts) => `<select data-docf="${k}" aria-label="${label}"><option value="">${label}</option>${opts.map(o => `<option value="${esc(o[0])}" ${f[k] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
     return `<div class="panel"><div class="toolbar"><div class="grow"><h3>Fiches d'exercices et évaluations</h3><p class="small muted" style="margin:4px 0 0">Les PDF publiés ici apparaissent dans l'espace des élèves inscrits de la classe et de la matière choisies.</p></div><button class="btn primary" data-act="add-doc">+ Ajouter un PDF</button></div>
       <div class="toolbar doc-filters">${sel('classe', 'Toutes les classes', S.settings.classes.map(c => [c, c]))}${sel('mat', 'Toutes les matières', MATIERES.map(m => [m, MAT_LABEL[m]]))}${sel('type', 'Tous les types', DOC_TYPES.map(t => [t, t]))}</div>
       ${vis.length ? `<ul class="docs">${vis.map(d => docRow(d, canDel(d))).join('')}</ul>` : `<p class="empty-state">${docs.length ? 'Aucun document pour ce filtre.' : 'Aucun document pour l\'instant. Cliquez sur « Ajouter un PDF ».'}</p>`}</div>`;
   }
   function docsEleveHTML(me) {
-    const docs = S.docs || [];
+    const docs = allDocs().filter(d => !d.fixe || (d.classes.includes(me.classe) && asList(me.matieres).includes(d.matiere)));
     if (!isActive(me)) return `<div class="panel"><h3>Mes fiches et évaluations</h3><p class="muted">Les fiches d'exercices et les évaluations apparaîtront ici dès que ton inscription sera confirmée.</p></div>`;
     const mats = asList(me.matieres).filter(m => docs.some(d => d.matiere === m));
     return `<div class="panel"><h3>Mes fiches et évaluations</h3>${docs.length ? mats.map(m => `<h4 class="doc-h"><span class="pill ${esc(m)}">${MAT_LABEL[m] || esc(m)}</span></h4><ul class="docs">${docs.filter(d => d.matiere === m).map(d => docRow(d, false)).join('')}</ul>`).join('') : '<p class="muted">Aucun document pour l\'instant. Tes professeurs déposeront ici les fiches d\'exercices et les évaluations.</p>'}</div>`;
