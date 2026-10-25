@@ -165,6 +165,7 @@
     if (d.byMonth) S.byMonth = d.byMonth;
     if (d.alerts) S.alerts = d.alerts;
     if (d.sheetUrl) S.sheetUrl = d.sheetUrl;
+    if (d.cles) S.cles = d.cles;
     if (d.docs) S.docs = d.docs.map(x => Object.assign({}, x, { classes: asList(x.classes) }));
     if (d.role === 'eleve' && d.me) S.me = normStudent(d.me);
     S.updatedAt = new Date();
@@ -223,7 +224,7 @@
       cacheDel(k) { delete db.cache[k]; demoSave(); },
       nextCounter() { db.counter = (db.counter || 0) + 1; demoSave(); return db.counter; },
       today, uuid: () => Array.from({ length: 4 }, () => Math.random().toString(16).slice(2, 10).padEnd(8, '0')).join('-'),
-      masterCode: DEMO_MASTER, sheetUrl: () => '',
+      masterCode: DEMO_MASTER, sheetUrl: () => '', evalKeys: window.SIGMA_DEMO_KEYS || {},
       // démo : le PDF reste dans ce navigateur le temps de la visite
       saveFile(name, b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
         return { id: 'demo-' + Date.now(), url: URL.createObjectURL(new Blob([u], { type: 'application/pdf' })) }; },
@@ -767,6 +768,7 @@
         ${(() => { const r = nextSession(x => x.classes.includes(me.classe) && asList(me.matieres).includes(x.matiere)); return r ? `<div class="panel callout"><h3>Ton prochain cours</h3><p><b>${esc(rdvTxt(r))}</b> · ${r.sessions.filter(x => x.classes.includes(me.classe)).map(x => esc(MAT_LABEL[x.matiere] || x.matiere) + (x.prof ? ' avec ' + esc(x.prof) : '')).join(', ')} · ${esc(S.settings.lieu)}</p></div>` : ''; })()}
         ${avisHTML}${alertes}${action}
         ${NOTE.classes.includes(me.classe) ? noteHTML(true) : ''}
+        ${window.SigmaLearn && isActive(me) ? SigmaLearn.cardHTML(me) : ''}
         ${docsEleveHTML(me)}
         ${suiviEleveHTML(me)}
         <div class="panel"><div class="toolbar"><h3 class="grow">Mes mensualités</h3><button class="btn primary sm" data-act="declare">Déclarer un paiement</button></div>
@@ -822,6 +824,14 @@
       try { applyData(await call('addNote', { note: { mat: $('#n-mat').value, val, type: $('#n-type').value, date: $('#n-date').value, lib: $('#n-lib').value.trim() } })); closeModal(); toast('Note enregistrée'); renderEleve(); }
       catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = /Accès refusé/.test(x.message) ? "Le serveur n'est pas encore à jour pour les notes : préviens l'admin." : x.message; er.hidden = false; $('#n-save').disabled = false; }
     });
+  }
+
+  /* ---------- cours en ligne (learn.js) ---------- */
+  function paneEnLigne() {
+    const dispo = window.SigmaLearn ? SigmaLearn.DISPO : [];
+    return `<div class="panel"><h3>Cours en ligne, quiz, exercices et évaluations type</h3>
+      <p class="small muted" style="margin:4px 0 10px">Les élèves inscrits (paiement validé) y accèdent depuis leur espace. Les corrections des évaluations restent chiffrées tant que vous ne les débloquez pas${S.role === 'admin' ? '' : ' (déblocage réservé aux gestionnaires)'}.</p>
+      ${dispo.length ? `<p>Classes prêtes : ${dispo.map(c => `<b>${esc(c)}</b>`).join(', ')}.</p><a class="btn primary" href="#apprendre">Ouvrir le cours en ligne${S.role === 'admin' ? ' et gérer les évaluations' : ''}</a>` : '<p class="muted">Aucun contenu pour l\'instant.</p>'}</div>`;
   }
 
   /* ---------- fiches d'exercices et évaluations (PDF) ---------- */
@@ -992,7 +1002,7 @@
     const mine = S.sessions.filter(s => s.prof === me.nom);
     const byClass = {};
     S.students.forEach(s => { (byClass[s.classe] = byClass[s.classe] || []).push(s); });
-    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['eleves', `Mes élèves (${S.students.length})`]];
+    const tabs = [['finances', 'Finances & ma part'], ['cours', 'Mes cours'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['enligne', 'Cours en ligne'], ['eleves', `Mes élèves (${S.students.length})`]];
     let body = '';
     if (S.ptab === 'finances') body = `<div class="kpis">
           <div class="kpi"><span class="l">Ma part ${S.finMonth ? '· ' + monthLabel(S.finMonth) : 'depuis la rentrée'}</span><span class="v">${fcfa(myRow.share)}</span><span class="s">${String(me.parts).replace('.', ',')} part${me.parts > 1 ? 's' : ''}</span></div>
@@ -1005,6 +1015,7 @@
         <div class="panel"><h3>Emploi du temps complet</h3><div class="week">${weekHTML(S.sessions, false, me.nom)}</div></div>`;
     else if (S.ptab === 'suivi') body = suiviPane(S.students.filter(s => s.statut !== 'abandon'), profMats);
     else if (S.ptab === 'docs') body = docsPane();
+    else if (S.ptab === 'enligne') body = paneEnLigne();
     else body = `${(S.alerts || []).filter(a => a.type === 'groupe').map(a => `<div class="warnbox">${esc(a.msg)}</div>`).join('')}
         ${Object.keys(byClass).length ? Object.keys(byClass).sort().map(c => `<div class="panel"><h3>${esc(c)} · ${byClass[c].length} élève${byClass[c].length > 1 ? 's' : ''}</h3><div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>École d'origine</th><th class="n">Maths</th><th class="n">PC</th><th class="n">SVT</th><th>Statut</th></tr></thead><tbody>
           ${byClass[c].sort((a, b) => a.nom.localeCompare(b.nom)).map(s => { const [l, k] = STATUTS[s.statut] || ['?', 'neutral']; return `<tr><td><b>${esc(fullName(s))}</b><span class="sub num">${esc(s.num)}</span></td><td>${esc(s.etablissement) || '—'}</td><td class="n">${esc(String(s.notesMaths || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesPC || '—').replace('.', ','))}</td><td class="n">${esc(String(s.notesSVT || '—').replace('.', ','))}</td><td><span class="pill ${k}">${l}</span></td></tr>`; }).join('')}
@@ -1017,7 +1028,7 @@
   /* =========================================================
      ESPACE GESTIONNAIRE
      ========================================================= */
-  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
+  const TABS = [['dash', 'Tableau de bord'], ['eleves', 'Élèves'], ['suivi', 'Suivi des notes'], ['docs', 'Fiches & évaluations'], ['enligne', 'Cours en ligne'], ['paiements', 'Paiements'], ['depenses', 'Dépenses'], ['repartition', 'Répartition'], ['edt', 'Emploi du temps'], ['profs', 'Profs & accès'], ['params', 'Paramètres']];
   function renderAdmin() {
     const pending = S.students.filter(s => s.statut === 'attente').length;
     const toVal = S.payments.filter(p => p.statut === 'a_valider').length;
@@ -1029,7 +1040,7 @@
   }
   function renderPane() {
     const p = $('#pane'); if (!p) return;
-    const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), docs: docsPane, paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
+    const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), docs: docsPane, enligne: paneEnLigne, paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
     p.innerHTML = fn();
     if (S.tab === 'eleves') bindStudentFilters();
     if (S.tab === 'params') bindParams();
@@ -1687,10 +1698,12 @@
     if (location.hash === '#admin') { try { history.replaceState(null, '', '#espace'); } catch (_) { } }
     if (location.hash === '#espace' || location.hash === '#admin') renderSpace();
     else if (location.hash === '#affiche') renderPoster();
+    else if (location.hash === '#apprendre' && window.SigmaLearn) { if (S.role) SigmaLearn.render(); else { try { history.replaceState(null, '', '#espace'); } catch (_) { } renderSpace(); } }
     else renderPublic();
   }
   window.addEventListener('hashchange', route);
 
+  if (window.SigmaLearn) SigmaLearn.init({ S, mutate, isActive });
   async function boot() {
     if (window.SIGMA_PAGE && location.hash !== '#espace') { try { history.replaceState(null, '', '#espace'); } catch (_) { location.hash = '#espace'; } }
     route();
@@ -1698,7 +1711,7 @@
     let tok = ''; try { tok = localStorage.getItem(SKEY) || ''; } catch (_) { }
     if (tok) { S.token = tok; try { applyData(await call('data')); } catch (_) { S.token = ''; try { localStorage.removeItem(SKEY); } catch (__) { } } }
     const reg = $('#reg'); const typing = reg && document.activeElement && reg.contains(document.activeElement);
-    if (location.hash === '#espace') route();
+    if (location.hash === '#espace' || location.hash === '#apprendre') route();
     else if (location.hash === '#affiche') renderPoster();
     else if (!typing) { const y = window.scrollY; renderPublic(); window.scrollTo(0, y); }
   }

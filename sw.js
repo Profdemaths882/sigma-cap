@@ -1,6 +1,6 @@
 // Sigma Cap — fonctionne hors connexion pour la page (les données restent en ligne)
-const V = 'sigma-cap-v202610251621';
-const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'core.js', 'data.js', 'config.js', 'manifest.webmanifest',
+const V = 'sigma-cap-v202610251705';
+const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'core.js', 'learn.js', 'data.js', 'config.js', 'manifest.webmanifest',
   'img/logo-full.jpg', 'img/mark.png', 'img/thiam.jpg', 'img/faye.jpg', 'img/sene.jpg', 'img/thiam-p.jpg', 'img/faye-p.jpg', 'img/sene-p.jpg', 'img/profdemaths.jpg', 'img/icon-192.png', 'img/icon-512.png', 'img/qrcode.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

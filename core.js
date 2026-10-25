@@ -190,6 +190,15 @@ var SigmaCore = (function () {
       if (!s || !isActive(s)) return [];
       return docs.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && (!x.matiere || asList(s.matieres).indexOf(x.matiere) >= 0); });
     }
+    // Évaluations en ligne : la correction est chiffrée dans le site ; la clé n'est donnée qu'après déblocage par l'admin
+    function clesFor(sess, d, s) {
+      var all = st.evalKeys || {}, out = {}, k;
+      if (sess.role === 'admin' || sess.role === 'prof') { for (k in all) out[k] = all[k]; return out; }
+      if (!s || !isActive(s)) return out;
+      var deb = (d.settings && Array.isArray(d.settings.debloques)) ? d.settings.debloques : [];
+      deb.forEach(function (id) { if (all[id]) out[id] = all[id]; });
+      return out;
+    }
     function nextNum() { return 'SC26-' + ('000' + st.nextCounter()).slice(-4); }
     function settings() {
       var s = st.getSettings();
@@ -224,7 +233,7 @@ var SigmaCore = (function () {
       if (sess.role === 'admin') {
         return { role: 'admin', me: { id: sess.id, nom: sess.nom }, settings: d.settings, sessions: d.sessions,
           teachers: d.teachers.map(function (t) { return strip('teachers', t); }), students: d.students.map(function (s) { return strip('students', s); }),
-          payments: d.payments, expenses: d.expenses, docs: docsFor(sess, d), sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
+          payments: d.payments, expenses: d.expenses, docs: docsFor(sess, d), cles: clesFor(sess, d), sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
       }
       if (sess.role === 'prof') {
         var me = d.teachers.filter(function (t) { return t.id === sess.id; })[0];
@@ -234,13 +243,13 @@ var SigmaCore = (function () {
           return s.statut !== 'abandon' && mine.some(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && asList(s.matieres).indexOf(x.matiere) >= 0; });
         }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut, createdAt: s.createdAt, suivi: s.suivi || '' }; });
         return { role: 'prof', me: pubTeacher(me), settings: pubSettings(d.settings), sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
-          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d), docs: docsFor(sess, d) };
+          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d), docs: docsFor(sess, d), cles: clesFor(sess, d) };
       }
       var s = d.students.filter(function (x) { return x.id === sess.id; })[0];
       if (!s) throw new Error('Compte introuvable.');
       var meS = strip('students', s); delete meS.codeConf; delete meS.essais;
       return { role: 'eleve', me: meS, settings: pubSettings(d.settings), sessions: d.sessions.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0; }),
-        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }), docs: docsFor(sess, d) };
+        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }), docs: docsFor(sess, d), cles: clesFor(sess, d, s) };
     }
 
     function onValidated(studentId) {
@@ -479,7 +488,17 @@ var SigmaCore = (function () {
         case 'bulk':
           if (KINDS.indexOf(req.kind) < 0) throw new Error('Table inconnue.');
           st.replace(req.kind, req.items || []); return { data: dataFor(sess) };
-        case 'saveSettings': st.setSettings(req.settings); return { data: dataFor(sess) };
+        case 'saveSettings': {
+          var ns = req.settings || {}, os = settings() || {};
+          if (!('debloques' in ns) && os.debloques) ns.debloques = os.debloques; // ne pas perdre les déblocages
+          st.setSettings(ns); return { data: dataFor(sess) };
+        }
+        case 'unlockEval': {
+          var cs = settings() || {}, list = Array.isArray(cs.debloques) ? cs.debloques.slice() : [], eid = String(req.id || '').slice(0, 40);
+          if (!eid) throw new Error('Évaluation inconnue.');
+          list = list.filter(function (x) { return x !== eid; }); if (req.on) list.push(eid);
+          cs.debloques = list; st.setSettings(cs); return { data: dataFor(sess) };
+        }
       }
       throw new Error('Action inconnue.');
     };
