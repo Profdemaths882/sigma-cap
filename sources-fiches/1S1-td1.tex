@@ -1,0 +1,208 @@
+\def\piedfiche{TD n°1 · 1ère S1}
+\input{preambule}
+\begin{document}
+\entete{FICHE DE TD N°1}{ÉQUATIONS, INÉQUATIONS, SYSTÈMES ET POLYNÔMES}{1ère S1}
+
+\begin{competences}
+  \item Résoudre équations et inéquations du \textbf{second degré}, avec ou sans \textbf{paramètre}.
+  \item Se ramener au second degré~: \textbf{changement de variable}, équations \textbf{irrationnelles}, avec \textbf{valeur absolue}.
+  \item Utiliser la \textbf{somme} et le \textbf{produit} des racines~; situer un réel par rapport aux racines.
+  \item Résoudre des \textbf{systèmes} (déterminant, pivot de Gauss, systèmes non linéaires) et \textbf{mathématiser} un problème.
+  \item \textbf{Polynômes}~: racines, factorisation, Horner, division euclidienne, identification.
+  \item \textbf{Démontrer}~: formules de Viète, divisibilité, polynômes réciproques, sommes.
+\end{competences}
+
+% ================= PARTIE A =================
+\partie{ink}{A · Équations et inéquations du second degré}{« Δ est ton meilleur indicateur »}
+
+\begin{exo}{ink}{Échauffement \etoiles1}
+Résoudre dans $\R$~:
+\[
+\text{a) } 2x^2-5x-3=0 \qquad \text{b) } x^2-2\sqrt3\,x+3=0 \qquad \text{c) } x^2-(1+\sqrt2)x+\sqrt2=0 \qquad \text{d) } -3x^2+x-4\geq0
+\]
+\[
+\text{e) } (x^2-1)(-x^2+5x-6)<0 \qquad\qquad \text{f) } \frac{x^2+x-6}{x^2-4x+3}\geq 0 \qquad\qquad \text{g) } \frac{2x-1}{x+2}\leq x-1
+\]
+\end{exo}
+
+\begin{exo}{ink}{Se ramener au second degré \etoiles2}
+Résoudre dans $\R$ en choisissant un \textbf{changement de variable} adapté~:
+\[
+\text{a) } x^4-5x^2+4=0 \qquad \text{b) } (x^2-3x)^2-2(x^2-3x)-8=0 \qquad \text{c) } x-5\sqrt x+6=0 \qquad \text{d) } \left(\frac{x-1}{x}\right)^2-\frac{x-1}{x}-2=0
+\]
+\end{exo}
+
+\begin{exo}{ink}{Radicaux et valeurs absolues \etoiles2\ \demo}
+Résoudre dans $\R$ en justifiant chaque équivalence~:
+\[
+\text{a) } \sqrt{x+5}=x-1 \qquad \text{b) } \sqrt{2x-1}<x-2 \qquad \text{c) } \sqrt{x^2-3x}\geq x-1 \qquad \text{d) } |x^2-4|=3x \qquad \text{e) } x^2-|x|-6\leq 0
+\]
+\end{exo}
+\bulle{\textbf{Piège classique~:} $\sqrt A=B \iff \big(B\geq0$ \textbf{et} $A=B^2\big)$. Si tu élèves au carré sans poser $B\geq0$, tu ajoutes de fausses solutions~! Pour $\sqrt A<B$, il faut \textbf{trois} conditions~: $A\geq0$, $B>0$ et $A<B^2$. Et pour $\sqrt A\geq B$, sépare les cas $B<0$ et $B\geq0$.}
+
+\begin{exo}{ink}{Somme et produit des racines \demo\ \etoiles2}
+\begin{enumerate}
+  \item Soit $ax^2+bx+c=0$ ($a\neq0$) une équation de discriminant $\Delta\geq0$ et de solutions $x'$ et $x''$. À partir des formules des solutions, \textbf{démontrer} que \ $x'+x''=-\dfrac ba$ \ et \ $x'x''=\dfrac ca$.
+  \item Sans calculer les solutions $x'$ et $x''$ de \ $3x^2-7x+1=0$, justifier qu'elles existent, puis calculer~:
+  \[ x'^2+x''^2\ ;\qquad \frac1{x'}+\frac1{x''}\ ;\qquad x'^3+x''^3\ ;\qquad \frac{x'}{x''}+\frac{x''}{x'}. \]
+  \item Former une équation du second degré ayant pour solutions $x'^2$ et $x''^2$.
+  \item Trouver deux réels dont la somme vaut $17$ et le produit $72$. Trouver deux réels $u$ et $v$ tels que $u+v=1$ et $uv=1$~: que se passe-t-il~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Le grand classique~: équation à paramètre \etoiles3}
+Soit $m$ un réel. On considère l'équation \ $(E_m)~:\ (m-1)x^2-2mx+m+2=0$.
+\begin{enumerate}
+  \item Résoudre $(E_m)$ pour $m=1$.
+  \item On suppose $m\neq1$. Montrer que le discriminant réduit vaut $\Delta'=2-m$. Discuter, suivant les valeurs de $m$, l'existence et le \textbf{signe} des solutions de $(E_m)$ (tableau récapitulatif).
+  \item Pour quelle valeur de $m$ l'équation admet-elle une solution double~? La calculer.
+  \item Déterminer $m$ pour que $0$ soit solution, puis calculer l'autre solution \textbf{sans résoudre} l'équation.
+  \item Trouver une \textbf{relation indépendante de $m$} entre la somme $S$ et le produit $P$ des solutions. Retrouver ainsi la solution double.
+  \item Déterminer $m$ pour que les solutions vérifient \ $x'^2+x''^2=8$.
+  \item Calculer $f_m(1)$ où $f_m(x)=(m-1)x^2-2mx+m+2$. En déduire les valeurs de $m$ pour lesquelles $x'<1<x''$.
+  \item Existe-t-il des valeurs de $m$ pour lesquelles $f_m(x)<0$ pour tout réel $x$~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Situer un réel par rapport aux racines \demo\ \etoiles3}
+Soit $f(x)=ax^2+bx+c$ avec $a\neq0$, et $\alpha$ un réel.
+\begin{enumerate}
+  \item À l'aide de la forme canonique, démontrer que \ $a\,f(\alpha)=a^2\left(\alpha+\dfrac b{2a}\right)^2-\dfrac{\Delta}{4}$.
+  \item En déduire que si $a\,f(\alpha)<0$, alors $\Delta>0$.
+  \item On suppose $\Delta>0$. Montrer que $a\,f(\alpha)=a^2(\alpha-x')(\alpha-x'')$, puis que \ $a\,f(\alpha)<0 \iff x'<\alpha<x''$.
+  \item \textbf{Application~:} sans calculer $\Delta$, montrer que l'équation $-2x^2+7x+2026=0$ admet deux solutions de signes contraires, et que $3$ est compris entre elles.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{La règle d'or des paramètres~:} commence \textbf{toujours} par le cas où le coefficient de $x^2$ s'annule (l'équation n'est plus du second degré~!). Ensuite seulement, $\Delta$, puis le signe de $P$ et de $S$. Et pour situer un réel $\alpha$, pense au signe de $a\,f(\alpha)$~: c'est rapide et élégant.}
+
+% ================= PARTIE B =================
+\partie{lime!80!black}{B · Systèmes d'équations}{« Mettre en équations, c'est déjà résoudre à moitié »}
+
+\begin{exo}{lime!80!black}{Systèmes linéaires $2\times2$ \etoiles1}
+\begin{enumerate}
+  \item Résoudre par la méthode des déterminants~: \ $\begin{cases}3x-2y=7\\5x+4y=8\end{cases}$ \quad puis \quad $\begin{cases}\dfrac2x+\dfrac3y=4\\[4pt]\dfrac5x-\dfrac1y=\dfrac32\end{cases}$ \ {\small(poser $X=\frac1x$, $Y=\frac1y$)}.
+  \item Discuter suivant le réel $m$ le système \ $\begin{cases}mx+y=2\\x+my=2\end{cases}$ \ (nombre de solutions et solutions).
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Pivot de Gauss \etoiles2}
+Résoudre dans $\R^3$ par la méthode du pivot de Gauss~:
+\[
+(S_1)~:\ \begin{cases}x+y+z=6\\2x-y+z=3\\x+2y-z=2\end{cases}
+\qquad\qquad
+(S_2)~:\ \begin{cases}x+2y-z=-3\\2x+y+z=6\\-x+y+2z=3\end{cases}
+\]
+\end{exo}
+
+\begin{exo}{lime!80!black}{Systèmes non linéaires \etoiles2\ \demo}
+\begin{enumerate}
+  \item Résoudre~: \ $\begin{cases}x+y=7\\xy=12\end{cases}$ \quad ; \quad $\begin{cases}x^2+y^2=25\\xy=12\end{cases}$ \quad ; \quad $\begin{cases}\dfrac1x+\dfrac1y=\dfrac56\\[4pt]x+y=5\end{cases}$.
+  \item \demo\ Démontrer que si $x+y=S$ et $xy=P$, alors $x$ et $y$ sont les solutions de l'équation $X^2-SX+P=0$. À quelle condition sur $S$ et $P$ de tels réels existent-ils~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Mathématiser un problème \etoiles2}
+Un groupe d'élèves de Sigma Cap loue un car pour une sortie pédagogique à $60\,000$~F, à partager équitablement. Si $5$ élèves de plus avaient participé, chacun aurait payé $1\,000$~F de moins.
+\begin{enumerate}
+  \item Choisir l'inconnue (phrase + unité), puis traduire l'énoncé, phrase par phrase, par une équation.
+  \item Résoudre et conclure~: combien d'élèves ont participé et combien chacun a-t-il payé~? Vérifier.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Mathématiser en 4 temps~:} \textbf{1)} je définis l'inconnue par une phrase (« soit $n$ le nombre d'élèves »)~; \textbf{2)} je traduis chaque phrase~; \textbf{3)} je résous~; \textbf{4)} je vérifie que la solution convient (ici un entier positif~!) et je réponds par une phrase.}
+
+% ================= PARTIE C =================
+\partie{sky}{C · Polynômes}{« Une racine trouvée, c'est un facteur gagné »}
+
+\begin{exo}{sky}{Racine évidente, factorisation \etoiles1}
+Soit \ $P(x)=2x^3-3x^2-11x+6$.
+\begin{enumerate}
+  \item Vérifier que $3$ est racine de $P$. Déterminer le polynôme $Q$ tel que $P(x)=(x-3)Q(x)$ \textbf{de deux façons}~: par identification des coefficients, puis par la méthode de Horner.
+  \item Factoriser complètement $P(x)$, puis résoudre $P(x)=0$ et $P(x)\leq0$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Division euclidienne et divisibilité \etoiles2}
+\begin{enumerate}
+  \item Effectuer la division euclidienne de \ $A(x)=x^4-3x^3+2x^2+x-1$ \ par \ $B(x)=x^2-x+1$.
+  \item Déterminer les réels $a$ et $b$ pour que $f(x)=x^4+1$ soit divisible par $g(x)=x^2+ax+b$. En déduire une factorisation de $x^4+1$ en produit de deux polynômes du second degré.
+  \item Déterminer les réels $a$ et $b$ tels que $x^5+ax^4+b$ soit divisible par $(x-1)^2$ \quad {\small(écrire que $1$ est racine, factoriser par $x-1$, puis que $1$ est racine du quotient)}.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Trois valeurs suffisent \demo\ \etoiles3}
+\rappel{Un polynôme de degré inférieur ou égal à $n$ qui admet plus de $n$ racines distinctes est le \textbf{polynôme nul}.}
+Soient $a$, $b$, $c$ trois réels distincts. On pose
+\[ P(x)=\frac{(x-b)(x-c)}{(a-b)(a-c)}+\frac{(x-a)(x-c)}{(b-a)(b-c)}+\frac{(x-a)(x-b)}{(c-a)(c-b)}. \]
+\begin{enumerate}
+  \item Quel est le degré maximal de $P$~? Calculer $P(a)$, $P(b)$ et $P(c)$.
+  \item En considérant le polynôme $P(x)-1$, démontrer \textbf{sans calcul} que $P(x)=1$ pour tout réel $x$.
+  \item \textbf{Prolongement~:} démontrer qu'il existe un unique polynôme $T$ de degré au plus $2$ tel que $T(1)=2$, $T(2)=3$ et $T(3)=6$, et le déterminer.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Formules de Viète au degré 3 \demo\ \etoiles3}
+\begin{enumerate}
+  \item On suppose que $x^3+px^2+qx+r=(x-a)(x-b)(x-c)$ pour tout réel $x$. Démontrer par identification que
+  \[ a+b+c=-p,\qquad ab+bc+ca=q,\qquad abc=-r. \]
+  \item Soit $Q(x)=x^3-2x^2-5x+6$, de racines $a$, $b$, $c$. \textbf{Sans les calculer}, déterminer $a+b+c$, $ab+bc+ca$, $abc$, puis $a^2+b^2+c^2$ et $\dfrac1a+\dfrac1b+\dfrac1c$.
+  \item Vérifier ces résultats en trouvant une racine évidente de $Q$ et en factorisant $Q$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Polynômes réciproques \etoiles3}
+\begin{enumerate}
+  \item On considère $(E)~:\ 6x^4-5x^3-38x^2-5x+6=0$. Justifier que $0$ n'est pas solution, puis montrer qu'en divisant par $x^2$ et en posant $X=x+\dfrac1x$, l'équation $(E)$ équivaut à $6X^2-5X-50=0$. Résoudre $(E)$.
+  \item Par la même méthode, résoudre \ $2x^4-9x^3+14x^2-9x+2=0$.
+  \item \demo\ Soit $P(x)=x^4-13x^3+48x^2-52x+16$. Montrer que pour $x\neq0$, \ $P(x)=x^2\left(X^2-13X+40\right)$ \ avec $X=x+\dfrac4x$. Résoudre $P(x)=0$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Repère les symétries~!} Dans $6x^4-5x^3-38x^2-5x+6$, les coefficients se lisent pareil dans les deux sens~: c'est un polynôme \textbf{réciproque}. Divise par $x^2$, regroupe $x^2+\frac1{x^2}=X^2-2$ et le degré 4 devient un degré 2~!}
+
+% ================= PARTIE D =================
+\partie{violet}{D · Démonstrations et problèmes de synthèse}{« Le niveau 1S1, c'est ici »}
+
+\begin{exo}{violet}{Divisibilité par $(x-1)^2$ \demo\ \etoiles3}
+Soit $n$ un entier naturel non nul et \ $f_n(x)=nx^{n+1}-(n+1)x^n+1$.
+\begin{enumerate}
+  \item Démontrer que pour tout réel $x$~: \ $x^n-1=(x-1)\left(x^{n-1}+x^{n-2}+\cdots+x+1\right)$.
+  \item Vérifier que $f_n(x)=nx^n(x-1)-(x^n-1)$. En déduire que $f_n(x)=(x-1)\,h_n(x)$ avec $h_n(x)=nx^n-\left(x^{n-1}+\cdots+x+1\right)$.
+  \item Calculer $h_n(1)$. En déduire qu'il existe un polynôme $g_n$ tel que $f_n(x)=(x-1)^2g_n(x)$. Déterminer $g_2$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Somme des carrés par les polynômes \demo\ \etoiles3}
+\begin{enumerate}
+  \item Déterminer un polynôme $P$ de degré $3$ tel que $P(0)=0$ et, pour tout réel $x$~: \ $P(x+1)-P(x)=x^2$ \quad {\small(poser $P(x)=ax^3+bx^2+cx$ et identifier)}.
+  \item En écrivant cette égalité pour $x=0,1,\dots,n$, démontrer que \ $1^2+2^2+\cdots+n^2=P(n+1)=\dfrac{n(n+1)(2n+1)}{6}$.
+  \item Vérifier pour $n=4$, puis calculer $1^2+2^2+\cdots+30^2$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Fractions rationnelles \etoiles2}
+\begin{enumerate}
+  \item Déterminer les réels $a$, $b$, $c$ tels que pour tout $x\neq-2$~: \ $\dfrac{2x^2+3x-1}{x+2}=ax+b+\dfrac{c}{x+2}$.
+  \item Déterminer les réels $\alpha$ et $\beta$ tels que pour tout $x\neq\pm3$~: \ $\dfrac{6}{x^2-9}=\dfrac{\alpha}{x-3}+\dfrac{\beta}{x+3}$. En déduire, pour $x\notin\{-3\,;3\}$, une décomposition de $\dfrac{1}{x^4-81}$ \ {\small(écrire $x^4-81=(x^2-9)(x^2+9)$)}.
+  \item Résoudre dans $\R$~: \ $\dfrac{1}{x-1}+\dfrac{2}{x+1}\geq\dfrac{4}{x^2-1}$.
+\end{enumerate}
+\end{exo}
+\begin{exo}{violet}{Problème de synthèse~: polynôme à paramètre \demo\ \etoiles3}
+Soit $m$ un réel et \ $P_m(x)=x^3+(m-1)x^2+3x-(m+3)$.
+\begin{enumerate}
+  \item Démontrer que, \textbf{quel que soit} $m$, le réel $1$ est racine de $P_m$.
+  \item Déterminer le polynôme $Q_m$ tel que $P_m(x)=(x-1)\,Q_m(x)$.
+  \item Calculer le discriminant de $Q_m$ et l'écrire sous forme factorisée. Pour quelle valeur de $m$ le réel $1$ est-il aussi racine de $Q_m$~?
+  \item Discuter, suivant les valeurs de $m$, le nombre de solutions de l'équation $P_m(x)=0$. Préciser les solutions pour $m=-2$ et pour $m=6$.
+  \item Résoudre $P_6(x)\geq0$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Inéquations à paramètre \etoiles3}
+\begin{enumerate}
+  \item Factoriser $x^2-(m+1)x+m$, puis résoudre, suivant les valeurs du réel $m$, l'inéquation \ $x^2-(m+1)x+m\leq0$.
+  \item Déterminer les réels $m$ pour lesquels \ $mx^2+(m-1)x+m-1>0$ \ pour tout réel $x$.
+\end{enumerate}
+\end{exo}
+
+\bulle{\textbf{Le mot de la fin~:} en 1ère S1, on ne se contente pas de calculer~: on \textbf{justifie}. Écris « on sait que… or… donc… », vérifie tes solutions dans l'équation de départ, et garde un œil sur l'ensemble de définition. Au travail, la réussite t'attend~! \hfill\textbf{M. Thiam}}
+
+\end{document}
