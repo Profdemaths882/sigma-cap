@@ -1,0 +1,227 @@
+\def\piedfiche{TD n°1 · 1ère S2}
+\input{preambule}
+\begin{document}
+\entete{FICHE DE TD N°1}{ÉQUATIONS, INÉQUATIONS, SYSTÈMES ET POLYNÔMES}{1ère S2}
+
+\begin{competences}
+  \item Résoudre équations et inéquations du \textbf{second degré} et se ramener au second degré.
+  \item Résoudre des équations \textbf{irrationnelles} et avec \textbf{valeur absolue}.
+  \item Utiliser la \textbf{somme} et le \textbf{produit} des racines, discuter une équation à \textbf{paramètre}.
+  \item Résoudre des \textbf{systèmes} linéaires ($2\times2$, pivot de Gauss) et non linéaires.
+  \item \textbf{Mathématiser} un problème concret et vérifier la solution.
+  \item \textbf{Polynômes}~: racines, factorisation, Horner, identification, division euclidienne.
+\end{competences}
+
+% ================= PARTIE A =================
+\partie{ink}{A · Équations et inéquations du second degré}{« Discriminant d'abord, conclusion ensuite »}
+
+\begin{exo}{ink}{Échauffement \etoiles1}
+Résoudre dans $\R$~:
+\[
+\text{a) } x^2-6x+5=0 \qquad \text{b) } 4x^2-4x+1=0 \qquad \text{c) } 2x^2+x+3=0 \qquad \text{d) } -x^2+4x+5>0
+\]
+\[
+\text{e) } (3x-2)^2-(x+4)^2\leq0 \qquad\quad \text{f) } \frac{x-1}{x+3}\geq 2 \qquad\quad \text{g) } \frac{x^2-4}{x^2+x-6}<0
+\]
+\end{exo}
+
+\begin{exo}{ink}{Somme et produit des racines \etoiles2}
+\begin{enumerate}
+  \item Justifier que l'équation $x^2-5x+3=0$ admet deux solutions $x'$ et $x''$. \textbf{Sans les calculer}, déterminer~:
+  \[ x'+x''\ ;\quad x'x''\ ;\quad x'^2+x''^2\ ;\quad \frac1{x'}+\frac1{x''}\ ;\quad (x'-x'')^2\ ;\quad x'^2x''+x'x''^2. \]
+  \item Vérifier que $-5$ est solution de $2x^2+7x-15=0$, puis trouver l'autre solution \textbf{sans calculer $\Delta$}.
+  \item Un champ rectangulaire a un périmètre de $34$~m et une aire de $60$~m$^2$. Déterminer ses dimensions.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Changements de variable \etoiles2}
+Résoudre dans $\R$~:
+\[
+\text{a) } x^4-10x^2+9=0 \qquad \text{b) } 2x-7\sqrt x+3=0 \qquad \text{c) } (x^2+x)^2-8(x^2+x)+12=0 \qquad \text{d) } x^4-5x^2+4\leq0
+\]
+\end{exo}
+
+\begin{exo}{ink}{Radicaux et valeurs absolues \etoiles2\ \demo}
+Résoudre dans $\R$ en justifiant les équivalences~:
+\[
+\text{a) } \sqrt{3x+1}=x-1 \qquad \text{b) } \sqrt{x+2}\leq x \qquad \text{c) } |2x-3|=x+1 \qquad \text{d) } |x^2-5x|=6
+\]
+\end{exo}
+\bulle{\textbf{Attention aux faux amis~!} Pour $\sqrt A=B$, on écrit $\big(B\geq0$ \textbf{et} $A=B^2\big)$. Sans la condition $B\geq0$, tu récupères des solutions qui n'en sont pas. Le bon réflexe~: \textbf{toujours vérifier} tes solutions dans l'équation de départ.}
+
+\begin{exo}{ink}{Inéquations produits et quotients \etoiles2}
+Résoudre dans $\R$ à l'aide d'un tableau de signes~:
+\[
+\text{a) } \frac{(x^2-3x+2)(x^2-9)}{x^2+1}\geq0 \qquad \text{b) } \frac1{x-1}-\frac1{x+1}>1 \qquad \text{c) } \frac{2x+1}{x-2}\leq\frac{x+1}{x+2}
+\]
+\end{exo}
+
+\begin{exo}{ink}{Problèmes du second degré \etoiles2}
+\begin{enumerate}
+  \item Trouver un réel qui, ajouté à son inverse, donne $\dfrac{10}{3}$.
+  \item Trouver deux entiers consécutifs dont la somme des carrés vaut $313$.
+  \item Un jardin carré de Sigma Cap est entouré d'une allée de $1$~m de large. L'aire de l'allée est égale à $44$~m$^2$. Quel est le côté du jardin~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Équation à paramètre \etoiles3}
+Soit $m$ un réel et \ $(E_m)~:\ x^2-2(m+1)x+m^2+3=0$.
+\begin{enumerate}
+  \item Montrer que le discriminant réduit de $(E_m)$ est $\Delta'=2m-2$.
+  \item Discuter, suivant les valeurs de $m$, l'existence et le \textbf{signe} des solutions de $(E_m)$. Que remarque-t-on~?
+  \item Pour quelle valeur de $m$ l'équation a-t-elle une solution double~? La donner.
+  \item Déterminer $m$ pour que $3$ soit solution de $(E_m)$.
+  \item Trouver une relation indépendante de $m$ entre la somme $S$ et le produit $P$ des solutions.
+  \item Déterminer $m$ pour que $x'^2+x''^2=20$ \ (attention aux valeurs à rejeter~!).
+  \item Peut-on trouver $m$ pour que les solutions soient \textbf{opposées}~? \textbf{inverses}~? Justifier.
+  \item Pour quelles valeurs de $m$ a-t-on \ $x^2-2(m+1)x+m^2+3>0$ \ pour tout réel $x$~?
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Méthode de discussion~:} 1) signe de $\Delta$~; 2) si $\Delta\geq0$, signe du produit $P$ (solutions de même signe ou non)~; 3) si $P>0$, signe de la somme $S$. Et une valeur de $m$ trouvée par calcul n'est valable que si $\Delta\geq0$~: vérifie toujours~!}
+
+\begin{exo}{ink}{Démonstration~: somme et produit \demo\ \etoiles2}
+Soit l'équation $ax^2+bx+c=0$ ($a\neq0$) de discriminant $\Delta\geq0$ et de solutions $x'=\dfrac{-b-\sqrt\Delta}{2a}$ et $x''=\dfrac{-b+\sqrt\Delta}{2a}$.
+\begin{enumerate}
+  \item Calculer $x'+x''$. Calculer $x'x''$ en utilisant l'identité $(u-v)(u+v)=u^2-v^2$.
+  \item En déduire que si $a$ et $c$ sont de signes contraires, l'équation a toujours deux solutions de signes contraires.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE B =================
+\partie{lime!80!black}{B · Systèmes d'équations}{« Une inconnue bien choisie, un problème résolu »}
+
+\begin{exo}{lime!80!black}{Systèmes linéaires $2\times2$ \etoiles1}
+\begin{enumerate}
+  \item Résoudre par la méthode des déterminants~: \ $\begin{cases}2x+3y=12\\3x-y=7\end{cases}$.
+  \item Discuter suivant le réel $m$ le système \ $\begin{cases}x+my=1\\mx+4y=2\end{cases}$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Pivot de Gauss et problème \etoiles2}
+\begin{enumerate}
+  \item Résoudre par la méthode du pivot de Gauss~: \ $\begin{cases}x+y+z=2\\x-y+2z=9\\2x+y-z=-3\end{cases}$.
+  \item Au marché de Colobane, Awa achète $2$~kg de mangues, $1$~kg d'oranges et $3$~kg de bananes pour $3\,500$~F. Fatou achète $1$~kg de mangues, $2$~kg d'oranges et $1$~kg de bananes pour $2\,400$~F. Moussa achète $3$~kg de mangues, $2$~kg d'oranges et $2$~kg de bananes pour $4\,300$~F. Déterminer le prix d'un kilogramme de chaque fruit.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Systèmes non linéaires \etoiles2}
+Résoudre dans $\R^2$~:
+\[
+\begin{cases}x+y=11\\xy=28\end{cases}\qquad
+\begin{cases}x-y=3\\xy=10\end{cases}\qquad
+\begin{cases}x^2+y^2=13\\x+y=5\end{cases}
+\]
+\end{exo}
+
+\begin{exo}{lime!80!black}{Systèmes avec changement d'inconnues \etoiles3}
+Résoudre dans $\R^2$ en posant de nouvelles inconnues~:
+\[
+\begin{cases}\dfrac2x-\dfrac1y=3\\[4pt]\dfrac1x+\dfrac3y=5\end{cases}
+\qquad\qquad
+\begin{cases}\sqrt x+\sqrt y=5\\x+y=13\end{cases}
+\qquad\qquad
+\begin{cases}x^2+y^2=20\\xy=8\end{cases}
+\]
+\end{exo}
+
+\begin{exo}{lime!80!black}{Problème d'âges \etoiles2}
+Aujourd'hui, M. Diop a le triple de l'âge de son fils. Dans $12$ ans, il aura le double de l'âge de son fils.
+\begin{enumerate}
+  \item Choisir les inconnues (une phrase pour chacune, avec l'unité) et compléter un tableau « âge aujourd'hui / âge dans 12 ans ».
+  \item Traduire chaque phrase par une équation, résoudre le système et conclure. Vérifier.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Mathématiser, c'est traduire~:} « le double de l'âge du fils dans 12 ans » s'écrit $2(y+12)$ et \textbf{pas} $2y+12$~: les parenthèses sont importantes~! Termine toujours par une phrase qui répond à la question.}
+
+% ================= PARTIE C =================
+\partie{sky}{C · Polynômes}{« Factoriser, c'est simplifier la vie »}
+
+\begin{exo}{sky}{Développer, réduire, ordonner \etoiles1}
+\begin{enumerate}
+  \item Développer, réduire et ordonner $P(x)=(x^2-x+1)(x+2)-(x-1)^3$. Quel est son degré~? Est-ce surprenant~?
+  \item Déterminer les réels $a$, $b$, $c$ tels que pour tout réel $x$~: $x^3-7x+6=(x-1)(ax^2+bx+c)$, puis factoriser complètement $x^3-7x+6$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Racine évidente, Horner \etoiles2}
+\begin{enumerate}
+  \item Soit $P(x)=x^3-4x^2+x+6$. Vérifier que $-1$ est racine de $P$, factoriser $P$ à l'aide de la méthode de Horner, puis résoudre $P(x)>0$.
+  \item Soit $Q(x)=2x^3+x^2-13x+6$. Trouver une racine entière de $Q$, factoriser $Q$ et résoudre $Q(x)\leq0$.
+  \item Déterminer le réel $m$ pour que $2$ soit racine de $R(x)=x^3+mx^2-4x+4$, puis factoriser $R(x)$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Bicarré et identification \etoiles2}
+\begin{enumerate}
+  \item Factoriser $P(x)=x^4-13x^2+36$ en produit de quatre polynômes de degré $1$, puis résoudre $P(x)<0$.
+  \item Déterminer le polynôme $T$ de degré $2$ tel que $T(0)=3$, $T(1)=0$ et $T(-1)=8$, puis factoriser $T(x)$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Division euclidienne \etoiles2}
+Effectuer la division euclidienne de \ $A(x)=2x^3-3x^2+4x-5$ \ par \ $B(x)=x^2-x+1$. Écrire l'égalité obtenue et la vérifier pour $x=0$ et $x=1$.
+\end{exo}
+
+\begin{exo}{sky}{Pourquoi une racine donne un facteur \demo\ \etoiles3}
+\begin{enumerate}
+  \item Démontrer que pour tout entier $k\geq1$ et tous réels $x$ et $a$~: \ $x^k-a^k=(x-a)\left(x^{k-1}+x^{k-2}a+\cdots+xa^{k-2}+a^{k-1}\right)$.
+  \item Soit $P(x)=c_nx^n+\cdots+c_1x+c_0$ et $a$ une racine de $P$. En écrivant $P(x)=P(x)-P(a)$, démontrer qu'il existe un polynôme $Q$ tel que $P(x)=(x-a)Q(x)$.
+  \item \textbf{Application~:} déterminer tous les polynômes de degré au plus $2$ qui s'annulent en $-2$ et en $1$. Quel est celui qui prend la valeur $6$ en $0$~?
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Polynôme réciproque de degré 3 \etoiles3}
+Soit $P(x)=2x^3+3x^2+3x+2$.
+\begin{enumerate}
+  \item Remarquer la symétrie des coefficients. Vérifier que $-1$ est racine de $P$.
+  \item Factoriser $P(x)$ et résoudre $P(x)=0$, puis $P(x)<0$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Astuce~:} quand les coefficients sont symétriques ($2,3,3,2$) et le degré impair, $-1$ est \textbf{toujours} racine. Pense à tester $1$, $-1$, $2$, $-2$… avant de te lancer dans des calculs compliqués~!}
+
+% ================= PARTIE D =================
+\partie{violet}{D · Fractions rationnelles et synthèse}{« On rassemble tout »}
+
+\begin{exo}{violet}{Fractions rationnelles \etoiles2\ \demo}
+\begin{enumerate}
+  \item Déterminer les réels $a$, $b$, $c$ tels que pour tout $x\neq-1$~: \ $\dfrac{x^2+3x+4}{x+1}=ax+b+\dfrac{c}{x+1}$.
+  \item \demo\ Démontrer que pour tout entier $k\geq1$~: $\dfrac1{k(k+1)}=\dfrac1k-\dfrac1{k+1}$. En déduire, pour $n\geq1$, la somme
+  \[ S_n=\frac1{1\times2}+\frac1{2\times3}+\cdots+\frac1{n(n+1)}=\frac{n}{n+1}. \]
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Une racine qui ne bouge pas \etoiles3}
+Soit $m$ un réel et \ $(E_m)~:\ (m-2)x^2-2(m-1)x+m=0$.
+\begin{enumerate}
+  \item Résoudre $(E_m)$ pour $m=2$.
+  \item Pour $m\neq2$, vérifier que $1$ est solution de $(E_m)$ quel que soit $m$. À l'aide du produit des solutions, en déduire l'autre solution $x''$.
+  \item Calculer le discriminant réduit $\Delta'$ et confirmer le résultat. L'équation peut-elle avoir une solution double~?
+  \item Déterminer les valeurs de $m$ pour lesquelles $x''>1$, puis celles pour lesquelles $x''$ est négative.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Vrai ou faux~? Justifier \demo\ \etoiles2}
+Pour chaque affirmation, répondre par vrai ou faux et \textbf{justifier} (démonstration ou contre-exemple).
+\begin{enumerate}
+  \item Si une équation du second degré a un discriminant positif, ses deux solutions sont positives.
+  \item Si $a$ et $c$ sont de signes contraires, l'équation $ax^2+bx+c=0$ a deux solutions distinctes.
+  \item Le polynôme $x^3+x+1$ admet une racine entière.
+  \item Le polynôme $x^3-3x+2$ est divisible par $(x-1)^2$.
+  \item Le système $\begin{cases}x+2y=3\\2x+4y=5\end{cases}$ admet une infinité de solutions.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Règle d'or~:} un \textbf{contre-exemple} suffit pour montrer qu'une affirmation est fausse~; pour montrer qu'elle est vraie, il faut une \textbf{démonstration} valable dans tous les cas.}
+
+\begin{exo}{violet}{Problème de synthèse \etoiles3}
+Soit \ $P(x)=x^3-3x^2-4x+12$.
+\begin{enumerate}
+  \item Calculer $P(3)$, puis factoriser complètement $P(x)$.
+  \item Soit $f(x)=\dfrac{P(x)}{x^2-5x+6}$. Déterminer l'ensemble de définition $D_f$ de $f$ et simplifier $f(x)$ sur $D_f$.
+  \item Résoudre dans $\R$~: \ $f(x)\leq1$, \ puis \ $P(x)\geq0$.
+  \item Résoudre le système \ $\begin{cases}x+y=1\\xy=-6\end{cases}$ \ et faire le lien avec les racines de $P$.
+\end{enumerate}
+\end{exo}
+
+\bulle{\textbf{Le mot de la fin~:} en 1ère S2, la régularité paie~! Refais les exercices où tu as bloqué, vérifie tes solutions, et rédige avec des phrases (« on sait que… donc… »). La réussite, c'est maintenant~! \hfill\textbf{M. Thiam}}
+
+\end{document}
