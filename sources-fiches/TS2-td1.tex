@@ -1,0 +1,198 @@
+\def\piedfiche{TD n°1 · Terminale S2}
+\input{preambule}
+\begin{document}
+\entete{FICHE DE TD N°1}{LIMITES, CONTINUITÉ, DÉRIVABILITÉ ET ÉTUDE DE FONCTIONS}{Terminale S2}
+
+\begin{competences}
+  \item Calculer des \textbf{limites} et \textbf{lever une indétermination} (factorisation, expression conjuguée).
+  \item Utiliser les théorèmes de \textbf{comparaison} et la \textbf{composée} de limites.
+  \item Étudier les \textbf{asymptotes} et les \textbf{branches infinies}, la position courbe / asymptote.
+  \item \textbf{Continuité}~: prolongement, théorème des valeurs intermédiaires, \textbf{bijection} et réciproque.
+  \item \textbf{Dérivabilité} en un point, tangente, demi-tangentes, dérivée de la \textbf{réciproque}, \textbf{inégalité des accroissements finis}.
+  \item Mener une \textbf{étude complète} de fonction (rationnelle, irrationnelle).
+\end{competences}
+
+% ================= PARTIE A =================
+\partie{ink}{A · Limites}{« Une FI n'est pas une impasse, c'est une invitation »}
+
+\begin{exo}{ink}{Limites et formes indéterminées \etoiles1\ \etoiles2}
+Calculer les limites suivantes (préciser à chaque fois s'il y a une forme indéterminée et la méthode utilisée)~:
+\[
+\text{a) } \lim_{x\to+\infty}\frac{2x^3-5x+1}{x^2+3} \qquad
+\text{b) } \lim_{x\to-\infty}\frac{3x^2+x}{1-2x^2} \qquad
+\text{c) } \lim_{x\to2}\frac{x^2-4}{x^2-3x+2} \qquad
+\text{d) } \lim_{x\to1^{-}}\frac{2x+1}{x-1}\ \text{ et }\ \lim_{x\to1^{+}}\frac{2x+1}{x-1}
+\]
+\[
+\text{e) } \lim_{x\to+\infty}\left(\sqrt{x^2+x}-x\right) \qquad
+\text{f) } \lim_{x\to-\infty}\left(\sqrt{x^2+x}+x\right) \qquad
+\text{g) } \lim_{x\to3}\frac{\sqrt{x+1}-2}{x-3} \qquad
+\text{h) } \lim_{x\to0}\frac{\sqrt{1+x}-\sqrt{1-x}}{x}
+\]
+\end{exo}
+\bulle{\textbf{Rédaction d'une limite de quotient~:} calcule \textbf{séparément} la limite du numérateur puis celle du dénominateur, réunis-les avec une accolade et écris « par quotient… ». Si c'est une FI, écris « par quotient, on a une FI », va à la ligne et annonce~: « \textbf{Levons l'indétermination}. » Avec un radical, pense à l'\textbf{expression conjuguée}~; avec un polynôme, \textbf{factorise} par le terme de plus haut degré ou par $(x-a)$.}
+
+\begin{exo}{ink}{Théorèmes de comparaison \etoiles2}
+\begin{enumerate}
+  \item Justifier que pour tout $x>0$~: \ $\dfrac{2x-1}{x+1}\leq\dfrac{2x+\cos x}{x+1}\leq\dfrac{2x+1}{x+1}$. \ En déduire \ $\displaystyle\lim_{x\to+\infty}\frac{2x+\cos x}{x+1}$.
+  \item Déterminer \ $\displaystyle\lim_{x\to+\infty}\frac{\sin x}{x}$ \ et \ $\displaystyle\lim_{x\to+\infty}\left(x+\sin x\right)$ \ en justifiant par un encadrement ou une minoration.
+  \item Déterminer \ $\displaystyle\lim_{x\to+\infty}\sqrt{\frac{4x+1}{x-2}}$ \ (limite d'une fonction composée).
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Asymptotes et branches infinies \etoiles2\ \etoiles3}
+\begin{enumerate}
+  \item Soit $f(x)=\dfrac{x^2-3x+1}{x-2}$. Déterminer les réels $a$, $b$, $c$ tels que $f(x)=ax+b+\dfrac{c}{x-2}$. En déduire que la courbe $(C_f)$ admet une asymptote verticale et une asymptote oblique $(D)$ dont on donnera les équations. Étudier la position de $(C_f)$ par rapport à $(D)$.
+  \item Soit $g(x)=\sqrt{x^2+2x}$. Montrer que la droite d'équation $y=x+1$ est asymptote à $(C_g)$ en $+\infty$ et que la droite d'équation $y=-x-1$ l'est en $-\infty$.
+  \item Préciser la nature de la branche infinie en $+\infty$ des courbes de $x\mapsto\sqrt x$ et de $x\mapsto x-2\sqrt{x+1}$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Limites de fonctions rationnelles \demo\ \etoiles3}
+\begin{enumerate}
+  \item Soit $P(x)=a_nx^n+\cdots+a_1x+a_0$ et $Q(x)=b_px^p+\cdots+b_1x+b_0$ avec $a_n\neq0$ et $b_p\neq0$. En factorisant $P(x)$ par $a_nx^n$ et $Q(x)$ par $b_px^p$, démontrer que
+  \[ \lim_{x\to+\infty}\frac{P(x)}{Q(x)}=\lim_{x\to+\infty}\frac{a_nx^n}{b_px^p}. \]
+  \item \textbf{Application~:} déterminer les réels $a$ et $b$ pour que la courbe de $f(x)=\dfrac{ax^2+bx+1}{x-1}$ admette la droite d'équation $y=2x+1$ comme asymptote en $+\infty$.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE B =================
+\partie{lime!80!black}{B · Continuité}{« Pas de saut, pas de trou »}
+
+\begin{exo}{lime!80!black}{Prolongement et continuité en un point \etoiles2}
+\begin{enumerate}
+  \item Soit $f(x)=\dfrac{x^2+x-2}{x-1}$ pour $x\neq1$. Montrer que $f$ admet un prolongement par continuité en $1$ et le définir.
+  \item Soit $a$ un réel et $g$ définie par \ $g(x)=x^2+a$ si $x\leq1$ \ et \ $g(x)=\dfrac{\sqrt{x+3}-2}{x-1}$ si $x>1$. Déterminer $a$ pour que $g$ soit continue en $1$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Théorème des valeurs intermédiaires \demo\ \etoiles3}
+Soit $f(x)=x^3+x-1$ définie sur $\R$.
+\begin{enumerate}
+  \item Étudier le sens de variation de $f$ et ses limites en $-\infty$ et $+\infty$.
+  \item Démontrer que l'équation $f(x)=0$ admet une \textbf{unique} solution $\alpha$ dans $\R$, puis que $0{,}6<\alpha<0{,}7$.
+  \item Par balayage, donner un encadrement de $\alpha$ d'amplitude $10^{-2}$. En déduire le signe de $f(x)$ suivant les valeurs de $x$.
+  \item Démontrer que \ $\alpha^3=1-\alpha$ \ et que \ $\dfrac1\alpha=\alpha^2+1$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{TVI + stricte monotonie = unicité~!} Pour montrer qu'une équation a une \textbf{unique} solution, il faut trois arguments~: $f$ est \textbf{continue}, \textbf{strictement monotone} sur l'intervalle, et $0$ est compris entre les bornes (ou les limites). N'en oublie aucun dans ta rédaction.}
+
+\begin{exo}{lime!80!black}{Bijection et fonction réciproque \etoiles2}
+Soit $f$ définie sur $I=\,]1\,;+\infty[$ par $f(x)=\dfrac{2x+1}{x-1}$.
+\begin{enumerate}
+  \item Étudier les variations de $f$ sur $I$ et montrer que $f$ réalise une bijection de $I$ sur un intervalle $J$ à préciser.
+  \item Déterminer l'expression de $f^{-1}(x)$ pour $x\in J$.
+  \item Comment les courbes de $f$ et de $f^{-1}$ se déduisent-elles l'une de l'autre~? Les tracer dans un même repère orthonormé.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Deux grands classiques du TVI \demo\ \etoiles3}
+\begin{enumerate}
+  \item \textbf{Point fixe~:} soit $f$ une fonction continue sur $[0\,;1]$ telle que $0\leq f(x)\leq1$ pour tout $x\in[0\,;1]$. En étudiant $g(x)=f(x)-x$, démontrer qu'il existe au moins un réel $c\in[0\,;1]$ tel que $f(c)=c$.
+  \item \textbf{Degré impair~:} soit $P(x)=x^3+ax^2+bx+c$ ($a$, $b$, $c$ réels). Déterminer les limites de $P$ en $-\infty$ et en $+\infty$, puis démontrer que $P$ admet au moins une racine réelle.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE C =================
+\partie{sky}{C · Dérivabilité}{« Dériver, c'est zoomer sur la courbe »}
+
+\begin{exo}{sky}{Dérivabilité en un point \demo\ \etoiles2}
+\begin{enumerate}
+  \item Soit $f(x)=\dfrac{x^2+1}{x-2}$. En revenant à la définition (taux d'accroissement), démontrer que $f$ est dérivable en $3$ et calculer $f'(3)$. Donner une équation de la tangente $(T)$ à $(C_f)$ au point d'abscisse $3$, puis vérifier le résultat avec la formule de la dérivée d'un quotient.
+  \item Soit $g(x)=\sqrt{x^2-4}$ définie sur $]-\infty\,;-2]\cup[2\,;+\infty[$. Étudier la dérivabilité de $g$ à droite en $2$. Interpréter graphiquement.
+  \item Soit $h(x)=|x^2-1|$. Étudier la dérivabilité de $h$ en $1$ (à gauche et à droite). Interpréter graphiquement.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Le taux d'accroissement donne une FI $\frac00$~: c'est normal~!} Réduis au même dénominateur et fais apparaître le facteur $(x-a)$ pour simplifier. Attention au signe « $-$ » devant la parenthèse, et vérifie que le point $(a\,;f(a))$ est bien sur ta tangente.}
+
+\begin{exo}{sky}{Dérivable, donc continue \demo\ \etoiles2}
+\begin{enumerate}
+  \item Soit $f$ une fonction dérivable en $a$. En écrivant, pour $x\neq a$, \ $f(x)-f(a)=(x-a)\times\dfrac{f(x)-f(a)}{x-a}$, démontrer que $f$ est continue en $a$.
+  \item La réciproque est-elle vraie~? Justifier à l'aide de la fonction $x\mapsto|x|$ en $0$, puis de $x\mapsto\sqrt x$ en $0$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Calculs de dérivées \etoiles1\ \etoiles2}
+Préciser l'ensemble de dérivabilité, puis calculer la dérivée de chacune des fonctions~:
+\[
+f_1(x)=(3x-1)^5 \qquad f_2(x)=\sqrt{x^2+x+1} \qquad f_3(x)=\frac{x^2-1}{x^2+1} \qquad f_4(x)=x\sqrt{1-x} \qquad f_5(x)=\frac{1}{(2x-3)^3} \qquad f_6(x)=\left(\frac{x+1}{x-1}\right)^3
+\]
+\end{exo}
+
+\begin{exo}{sky}{Dérivée de la fonction réciproque \etoiles3}
+On reprend la fonction $f(x)=x^3+x-1$ de l'exercice 6.
+\begin{enumerate}
+  \item Justifier que $f$ est une bijection de $\R$ sur $\R$ et que sa réciproque $f^{-1}$ est dérivable sur $\R$.
+  \item Calculer $f(0)$ et $f(1)$. En déduire $\left(f^{-1}\right)'(-1)$ et $\left(f^{-1}\right)'(1)$ \ (rappel~: $\left(f^{-1}\right)'(y)=\dfrac{1}{f'\!\left(f^{-1}(y)\right)}$).
+  \item Donner une équation de la tangente à la courbe de $f^{-1}$ au point d'abscisse $1$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Inégalité des accroissements finis \demo\ \etoiles3}
+Soit $\varphi(t)=\sqrt{1+t}$ pour $t\geq0$.
+\begin{enumerate}
+  \item Calculer $\varphi'(t)$ et montrer que pour tout $t\geq0$~: \ $0<\varphi'(t)\leq\dfrac12$.
+  \item À l'aide de l'inégalité des accroissements finis sur $[0\,;x]$, démontrer que pour tout $x\geq0$~: \ $\sqrt{1+x}\leq1+\dfrac x2$.
+  \item Montrer de même que pour tout $x\geq0$~: \ $\sqrt{1+x}\geq1+\dfrac{x}{2\sqrt{1+x}}$.
+  \item En déduire un encadrement de $\sqrt{1{,}02}$, puis montrer que $1{,}0099\leq\sqrt{1{,}02}\leq1{,}01$.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE D =================
+\partie{violet}{D · Études de fonctions}{« On met tout ensemble~: c'est le Bac »}
+
+\begin{exo}{violet}{Problème 1~: une fonction rationnelle \etoiles3}
+Soit $f$ définie par \ $f(x)=\dfrac{x^2+3}{x-1}$ \ et $(C_f)$ sa courbe dans un repère orthonormé.
+\begin{enumerate}
+  \item Déterminer l'ensemble de définition $D_f$ et les limites aux bornes de $D_f$.
+  \item Déterminer les réels $a$, $b$, $c$ tels que $f(x)=ax+b+\dfrac{c}{x-1}$. En déduire les asymptotes de $(C_f)$ et la position de $(C_f)$ par rapport à l'asymptote oblique.
+  \item Montrer que pour tout $x\in D_f$~: \ $f'(x)=\dfrac{(x-3)(x+1)}{(x-1)^2}$. Dresser le tableau de variations de $f$.
+  \item Démontrer que le point $\Omega(1\,;2)$ est centre de symétrie de $(C_f)$.
+  \item Déterminer une équation de la tangente $(T)$ à $(C_f)$ au point d'abscisse $0$.
+  \item Tracer $(D)$, $(T)$ et $(C_f)$. Discuter graphiquement, suivant les valeurs du réel $m$, le nombre de solutions de l'équation $f(x)=m$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Problème 2~: une fonction irrationnelle \etoiles3}
+Soit $g$ définie sur $[-1\,;+\infty[$ par \ $g(x)=x-2\sqrt{x+1}$.
+\begin{enumerate}
+  \item Étudier la dérivabilité de $g$ à droite en $-1$. Interpréter graphiquement le résultat.
+  \item Calculer $\displaystyle\lim_{x\to+\infty}g(x)$, $\displaystyle\lim_{x\to+\infty}\frac{g(x)}{x}$ et $\displaystyle\lim_{x\to+\infty}\big(g(x)-x\big)$. Interpréter.
+  \item Calculer $g'(x)$ pour $x>-1$, étudier son signe et dresser le tableau de variations de $g$.
+  \item Résoudre l'équation $g(x)=0$ \ (on trouvera $x=2+2\sqrt2$).
+  \item Montrer que la restriction $h$ de $g$ à $[0\,;+\infty[$ est une bijection de $[0\,;+\infty[$ sur un intervalle $K$ à préciser. En posant $t=\sqrt{x+1}$, démontrer que pour tout $y\in K$~: \ $h^{-1}(y)=y+2+2\sqrt{y+2}$.
+  \item Tracer $(C_g)$ et la courbe de $h^{-1}$ dans un même repère.
+\end{enumerate}
+\end{exo}
+\begin{exo}{violet}{Problème 3~: une fonction avec valeur absolue \etoiles2}
+Soit $k$ définie sur $\R$ par $k(x)=x\,|x-2|$.
+\begin{enumerate}
+  \item Écrire $k(x)$ sans valeur absolue. Étudier la continuité et la dérivabilité de $k$ en $2$. Interpréter graphiquement (demi-tangentes).
+  \item Étudier les limites de $k$ en $-\infty$ et en $+\infty$, puis dresser le tableau de variations de $k$.
+  \item Tracer $(C_k)$, puis discuter graphiquement, suivant le réel $m$, le nombre de solutions de l'équation $k(x)=m$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Problème 4~: le coup de la fonction auxiliaire \demo\ \etoiles3}
+Soit $f$ définie sur $\R$ par \ $f(x)=\dfrac{x^3+x+1}{x^2+1}$.
+\begin{enumerate}
+  \item Démontrer que pour tout réel $x$~: \ $f(x)=x+\dfrac{1}{x^2+1}$. En déduire les limites de $f$ en $\pm\infty$, l'asymptote oblique $(\Delta)$ et la position de $(C_f)$ par rapport à $(\Delta)$.
+  \item Montrer que $f'(x)=\dfrac{g(x)}{(x^2+1)^2}$ avec $g(x)=x^4+2x^2-2x+1$.
+  \item \textbf{Fonction auxiliaire~:} vérifier que $g(x)=x^4+x^2+(x-1)^2$. En déduire le signe de $g(x)$, puis le sens de variation de $f$.
+  \item Démontrer que l'équation $f(x)=0$ admet une unique solution $\alpha$ et que $-1<\alpha<0$.
+  \item Déterminer le point de $(C_f)$ où la tangente est parallèle à $(\Delta)$ et donner une équation de cette tangente. Tracer $(\Delta)$, la tangente et $(C_f)$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Vrai ou faux~? Justifier \demo\ \etoiles2}
+\begin{enumerate}
+  \item Si $f$ est continue en $a$, alors $f$ est dérivable en $a$.
+  \item Si $\displaystyle\lim_{x\to+\infty}\frac{f(x)}{x}=1$, alors la droite d'équation $y=x$ est asymptote à $(C_f)$ en $+\infty$.
+  \item Si $f$ est strictement croissante sur $\R$, alors $\displaystyle\lim_{x\to+\infty}f(x)=+\infty$ \ {\small(penser à $x\mapsto\frac{x}{1+|x|}$)}.
+  \item Si $f$ est continue sur $[a\,;b]$ et $f(a)f(b)<0$, alors l'équation $f(x)=0$ a une \textbf{unique} solution dans $[a\,;b]$.
+\end{enumerate}
+\end{exo}
+
+\bulle{\textbf{Plan d'une étude complète~:} domaine $\to$ limites et asymptotes $\to$ dérivabilité aux bornes $\to$ dérivée et signe $\to$ tableau de variations $\to$ points particuliers (tangentes, intersections avec les axes) $\to$ tracé. Suis ce plan à chaque fois~: au Bac, c'est la moitié des points~! \hfill\textbf{M. Thiam}}
+
+\end{document}
