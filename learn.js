@@ -4,7 +4,7 @@
 window.SigmaLearn = (function () {
   'use strict';
   const DISPO = ['2nde S'];                       // classes dont le contenu est prêt
-  const VERSION = '202610251705';
+  const VERSION = '202610252056';
   let ctx = null;
   const L = { classe: '', chap: 0, tab: 'cours', evalOpen: {}, evalShow: {}, plain: {} };
 
@@ -133,17 +133,26 @@ window.SigmaLearn = (function () {
   /* exercices */
   function exosHTML(ch) {
     const done = prog(L.classe)['e-' + ch.id] || {};
-    return ch.exos.map((e, i) => `<article class="panel lr-exo" data-ei="${i}">
-      <div class="toolbar"><h3 class="grow">Exercice ${i + 1}${e.titre ? ' · ' + esc(e.titre) : ''}</h3>${e.niveau ? `<span class="lr-niv">${'★'.repeat(e.niveau)}</span>` : ''}${done[i] ? '<span class="pill ok">Réussi</span>' : ''}</div>
+    const f = L.exoFiltre || 'tous';
+    const keep = e => f === 'tous' || (f === 'demo' ? e.demo : (!e.demo && e.niveau === +f));
+    const nb = { tous: ch.exos.length, demo: ch.exos.filter(e => e.demo).length, 1: 0, 2: 0, 3: 0 };
+    ch.exos.forEach(e => { if (!e.demo) nb[e.niveau] = (nb[e.niveau] || 0) + 1; });
+    const ok = Object.keys(done).length;
+    const bar = `<div class="panel lr-exbar"><div class="toolbar"><div class="grow"><b>Série de ${ch.exos.length} exercices</b><span class="small muted"> · ${ok} réussi${ok > 1 ? 's' : ''}</span>
+        <div class="lr-prog"><i style="width:${Math.round(ok / ch.exos.length * 100)}%"></i></div></div></div>
+      <div class="seg" role="group" aria-label="Filtrer">${[['tous', 'Tous'], ['1', '★ Application'], ['2', '★★ Entraînement'], ['3', '★★★ Approfondissement'], ['demo', '✍️ Démonstrations']].map(([k, l]) => `<button type="button" data-lr="efilt" data-v="${k}" aria-pressed="${f === k}">${l} (${nb[k] || 0})</button>`).join('')}</div></div>`;
+    return bar + ch.exos.map((e, i) => keep(e) ? `<article class="panel lr-exo${e.demo ? ' lr-demo' : ''}" data-ei="${i}">
+      <div class="toolbar"><h3 class="grow">Exercice ${i + 1}${e.titre ? ' · ' + esc(e.titre) : ''}</h3>${e.demo ? '<span class="pill lr-dp">DÉMONSTRATION</span>' : ''}${e.niveau ? `<span class="lr-niv">${'★'.repeat(e.niveau)}</span>` : ''}${done[i] ? '<span class="pill ok">Réussi</span>' : ''}</div>
       <div class="lr-enonce">${e.enonce}</div>
-      ${e.questions.map((q, k) => `<div class="lr-qq" data-k="${k}"><div class="lr-ql">${q.label}</div>
+      ${(e.questions || []).map((q, k) => `<div class="lr-qq" data-k="${k}"><div class="lr-ql">${q.label}</div>
         ${q.type === 'qcm' ? `<div class="lr-choix">${q.choix.map((c, j) => `<label class="chk"><input type="radio" name="r-${i}-${k}" value="${j}"> <span>${c}</span></label>`).join('')}</div>`
           : `<div class="lr-in"><input type="text" inputmode="${q.type === 'ensemble' ? 'text' : 'decimal'}" autocomplete="off" placeholder="${q.type === 'ensemble' ? 'ex. -2 ; 3   (∅ si aucune)' : (q.ph || 'ta réponse')}" aria-label="Réponse"></div>`}
         <div class="lr-fb" aria-live="polite"></div>
         ${q.indice ? `<details class="lr-ind"><summary>Indice</summary><div>${q.indice}</div></details>` : ''}</div>`).join('')}
-      <div class="toolbar"><button type="button" class="btn primary sm" data-lr="check" data-v="${i}">Vérifier mes réponses</button><button type="button" class="btn sm" data-lr="sol" data-v="${i}">Voir la solution</button></div>
+      ${e.pistes ? `<details class="lr-ind"><summary>Pistes pour démarrer</summary><div>${e.pistes}</div></details>` : ''}
+      <div class="toolbar">${(e.questions || []).length ? `<button type="button" class="btn primary sm" data-lr="check" data-v="${i}">Vérifier mes réponses</button>` : ''}<button type="button" class="btn sm" data-lr="sol" data-v="${i}">${e.demo ? 'Voir la démonstration rédigée' : 'Voir la solution'}</button>${!(e.questions || []).length && !done[i] ? `<button type="button" class="btn sm go" data-lr="selfok" data-v="${i}">J'ai réussi seul(e)</button>` : ''}</div>
       <div class="lr-sol" hidden>${e.solution || ''}</div>
-    </article>`).join('') + `<p class="small muted">Écris les fractions avec « / » (ex. 3/4), les racines avec « √ » ou « racine » (ex. 2√3), les décimaux avec une virgule. Pour un ensemble de solutions, sépare par « ; ».</p>`;
+    </article>` : '').join('') + `<p class="small muted">Écris les fractions avec « / » (ex. 3/4), les racines avec « √ » ou « racine » (ex. 2√3), π avec « π » ou « pi », les décimaux avec une virgule. Pour un ensemble de solutions, sépare par « ; ». Pour une démonstration : rédige-la sur ton cahier, puis compare avec la démonstration rédigée.</p>`;
   }
 
   /* évaluations */
@@ -189,7 +198,7 @@ window.SigmaLearn = (function () {
       else if (a === 'qreset') draw(d);
       else if (a === 'check') {
         const i = +v, e = ch.exos[i], card = main.querySelector(`.lr-exo[data-ei="${i}"]`); let good = 0;
-        e.questions.forEach((q, k) => {
+        (e.questions || []).forEach((q, k) => {
           const box = card.querySelector(`.lr-qq[data-k="${k}"]`), fb = $('.lr-fb', box);
           let val = '';
           if (q.type === 'qcm') { const r = box.querySelector('input:checked'); val = r ? r.value : ''; } else val = $('input', box).value;
@@ -199,8 +208,10 @@ window.SigmaLearn = (function () {
           fb.className = 'lr-fb ' + (r ? 'ok' : 'bad'); fb.textContent = r ? '✅ Juste !' : '❌ Ce n\'est pas ça. Regarde l\'indice puis réessaie.';
           if (r) good++;
         });
-        if (good === e.questions.length) { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][i] = 1; saveProg(L.classe, p); }
+        if (good === (e.questions || []).length) { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][i] = 1; saveProg(L.classe, p); }
       }
+      else if (a === 'efilt') { L.exoFiltre = v; draw(d); }
+      else if (a === 'selfok') { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][+v] = 1; saveProg(L.classe, p); draw(d); }
       else if (a === 'sol') { const card = main.querySelector(`.lr-exo[data-ei="${v}"]`), s = $('.lr-sol', card); s.hidden = !s.hidden; if (!s.hidden) maths(s); }
       else if (a === 'esujet') { L.evalOpen[v] = !L.evalOpen[v]; draw(d); }
       else if (a === 'ecorr') {
