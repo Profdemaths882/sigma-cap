@@ -119,6 +119,7 @@ var SigmaCore = (function () {
     var frais = deps.filter(function (e) { return e.categorie !== 'Versement prof'; });
     var vers = deps.filter(function (e) { return e.categorie === 'Versement prof'; });
     var encaisse = sum(pays, function (p) { return p.montant; });
+    var inscriptions = sum(pays.filter(function (p) { return String(p.note || '').indexOf('[Inscription]') === 0; }), function (p) { return p.montant; });
     var depenses = sum(frais, function (e) { return e.montant; });
     var net = encaisse - depenses;
     var team = (d.teachers || []).filter(function (t) { return t.statut === 'actif' && partsOf(t) > 0; });
@@ -129,7 +130,7 @@ var SigmaCore = (function () {
       return { id: t.id, nom: t.nom, matiere: t.matiere, parts: partsOf(t), share: share, verse: verse, reste: share - verse };
     });
     var pend = (d.payments || []).filter(function (p) { return p.statut === 'a_valider' && (!mois || p.mois === mois); });
-    return { encaisse: encaisse, depenses: depenses, verse: sum(vers, function (e) { return e.montant; }), net: net, totalParts: totalParts, rows: rows,
+    return { encaisse: encaisse, inscriptions: inscriptions, mensualites: encaisse - inscriptions, depenses: depenses, verse: sum(vers, function (e) { return e.montant; }), net: net, totalParts: totalParts, rows: rows,
       aValider: { n: pend.length, montant: sum(pend, function (p) { return p.montant; }) } };
   }
   function financeByMonth(d) {

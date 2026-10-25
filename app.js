@@ -985,7 +985,7 @@
     return `<div class="toolbar"><select data-act="fin-month" aria-label="Période"><option value="">Toute l'année</option>${months.map(m => `<option value="${m}" ${m === monthSel ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</select>
         <span class="grow muted small">${updatedTxt()} · actualisé automatiquement</span></div>
       <div class="kpis">
-        <div class="kpi"><span class="l">Encaissé (validé)</span><span class="v">${fcfa(f.encaisse)}</span>${f.aValider.n ? `<span class="s">+ ${fcfa(f.aValider.montant)} en attente de validation</span>` : '<span class="s">tous paiements validés</span>'}</div>
+        <div class="kpi"><span class="l">Total encaissé (validé)</span><span class="v">${fcfa(f.encaisse)}</span><span class="s">${f.inscriptions != null ? `mensualités ${fcfa(f.mensualites)} + inscriptions ${fcfa(f.inscriptions)}` : ''}${f.aValider.n ? `${f.inscriptions != null ? ' · ' : ''}+ ${fcfa(f.aValider.montant)} à valider` : ''}</span></div>
         <div class="kpi"><span class="l">Frais de fonctionnement</span><span class="v">${fcfa(f.depenses)}</span><span class="s">salle, photocopies…</span></div>
         <div class="kpi"><span class="l">Net à partager</span><span class="v">${fcfa(f.net)}</span><span class="s">${String(f.totalParts).replace('.', ',')} parts au total</span></div>
       </div>
@@ -1054,7 +1054,8 @@
     const toVal = S.payments.filter(p => p.statut === 'a_valider');
     const m = curMonth() < startMonth() ? startMonth() : curMonth();
     const attendu = act.filter(s => (s.moisDebut || startMonth()) <= m).reduce((a, s) => a + dueFor(s, m), 0);
-    const encMois = S.payments.filter(p => payOk(p) && p.mois === m).reduce((a, p) => a + p.montant, 0);
+    const paysMois = S.payments.filter(p => payOk(p) && p.mois === m);
+    const encMois = paysMois.reduce((a, p) => a + p.montant, 0), inscMois = paysMois.filter(isInsc).reduce((a, p) => a + p.montant, 0);
     const bal = act.map(s => [s, balance(s)]);
     const impayes = bal.reduce((a, [, b]) => a + b.reste, 0);
     const fin = C.finance(finData());
@@ -1070,7 +1071,7 @@
       <div class="kpis">
         <div class="kpi"><span class="l">Élèves inscrits (payé)</span><span class="v">${act.length}</span><span class="s">${pend.length} sans paiement · ${codeWait.length} code non saisi</span></div>
         <div class="kpi ${toVal.length ? 'alert' : ''}"><span class="l">Paiements à valider</span><span class="v">${toVal.length}</span><span class="s">${fcfa(toVal.reduce((a, p) => a + p.montant, 0))} déclarés par les élèves</span></div>
-        <div class="kpi"><span class="l">Encaissé · ${monthLabel(m)}</span><span class="v">${fcfa(encMois)}</span><span class="s">sur ${fcfa(attendu)} attendus</span></div>
+        <div class="kpi"><span class="l">Total encaissé · ${monthLabel(m)}</span><span class="v">${fcfa(encMois)}</span><span class="s">mensualités ${fcfa(encMois - inscMois)} (sur ${fcfa(attendu)} attendus) + inscriptions ${fcfa(inscMois)}</span></div>
         <div class="kpi ${impayes ? 'alert' : ''}"><span class="l">Impayés cumulés</span><span class="v">${fcfa(impayes)}</span><span class="s">${bal.filter(([, b]) => b.late.length).length} élève(s) en retard après le ${limitDay()}</span></div>
       </div>
       ${toVal.length ? `<div class="warnbox">${toVal.length} paiement${toVal.length > 1 ? 's' : ''} déclaré${toVal.length > 1 ? 's' : ''} par les élèves attend${toVal.length > 1 ? 'ent' : ''} votre validation. <button class="btn sm" data-act="tab" data-v="paiements">Valider</button></div>` : ''}
@@ -1222,6 +1223,7 @@
     const list = S.students.filter(s => isActive(s) && (s.moisDebut || startMonth()) <= m).sort((a, b) => a.classe.localeCompare(b.classe) || a.nom.localeCompare(b.nom));
     const rows = list.map(s => [s, monthState(s, m)]);
     const att = list.reduce((a, s) => a + dueFor(s, m), 0), enc = rows.reduce((a, [, x]) => a + x[2], 0);
+    const paysM = S.payments.filter(p => payOk(p) && p.mois === m), totM = paysM.reduce((a, p) => a + p.montant, 0), inscM = paysM.filter(isInsc).reduce((a, p) => a + p.montant, 0);
     const journal = S.payments.filter(p => p.mois === m).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const nbPaid = rows.filter(([, x]) => x[1] === 'ok').length;
     const name = id => { const s = S.students.find(x => x.id === id); return s ? fullName(s) + ' · ' + s.classe : 'élève supprimé'; };
@@ -1239,8 +1241,9 @@
       </div>
       <div class="kpis">
         <div class="kpi"><span class="l">Attendu</span><span class="v">${fcfa(att)}</span><span class="s">${list.length} élèves inscrits</span></div>
-        <div class="kpi"><span class="l">Encaissé (validé)</span><span class="v">${fcfa(enc)}</span><span class="s">${nbPaid} élève(s) à jour</span></div>
+        <div class="kpi"><span class="l">Mensualités encaissées</span><span class="v">${fcfa(enc)}</span><span class="s">${nbPaid} élève(s) à jour</span></div>
         <div class="kpi ${att - enc > 0 ? 'alert' : ''}"><span class="l">Reste à encaisser</span><span class="v">${fcfa(Math.max(0, att - enc))}</span><span class="s">${rows.length - nbPaid} élève(s)</span></div>
+        <div class="kpi"><span class="l">Total encaissé · ${monthLabel(m)}</span><span class="v">${fcfa(totM)}</span><span class="s">dont frais d'inscription ${fcfa(inscM)}${totM - inscM !== enc ? ` · autres ${fcfa(totM - inscM - enc)}` : ''}</span></div>
       </div>
       ${rows.length ? `<div class="tbl-wrap"><table>
         <thead><tr><th>Élève</th><th>Classe</th><th class="n">Mensualité</th><th class="n">Payé</th><th class="n">Reste</th><th>État</th><th></th></tr></thead>
@@ -1315,7 +1318,7 @@
         <span class="grow"></span><button class="btn" data-act="new-versement">+ Versement à un prof</button><button class="btn primary" data-act="new-expense">+ Dépense</button>
       </div>
       <div class="kpis">
-        <div class="kpi"><span class="l">Encaissé (validé)</span><span class="v">${fcfa(f.encaisse)}</span></div>
+        <div class="kpi"><span class="l">Total encaissé (validé)</span><span class="v">${fcfa(f.encaisse)}</span><span class="s">mensualités ${fcfa(f.mensualites)} + inscriptions ${fcfa(f.inscriptions)}</span></div>
         <div class="kpi"><span class="l">Frais de fonctionnement</span><span class="v">${fcfa(f.depenses)}</span></div>
         <div class="kpi"><span class="l">Versé aux profs</span><span class="v">${fcfa(f.verse)}</span></div>
         <div class="kpi ${f.encaisse - f.depenses - f.verse < 0 ? 'alert' : ''}"><span class="l">En caisse</span><span class="v">${fcfa(f.encaisse - f.depenses - f.verse)}</span></div>
