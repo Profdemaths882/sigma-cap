@@ -1,0 +1,203 @@
+\def\piedfiche{TD n°1 · Terminale S1}
+\input{preambule}
+\begin{document}
+\entete{FICHE DE TD N°1}{LIMITES, CONTINUITÉ, DÉRIVABILITÉ ET ÉTUDE DE FONCTIONS}{Terminale S1}
+
+\begin{competences}
+  \item Lever des \textbf{indéterminations}, y compris avec les fonctions \textbf{trigonométriques}.
+  \item Utiliser les théorèmes de \textbf{comparaison} (gendarmes, minoration) et la \textbf{composée}.
+  \item \textbf{Asymptotes}, branches infinies, prolongement par \textbf{continuité}.
+  \item \textbf{TVI}, \textbf{bijection}, fonction réciproque et \textbf{dérivée de la réciproque}.
+  \item Dérivabilité en un point, \textbf{dérivées successives}, \textbf{inégalités des accroissements finis}.
+  \item \textbf{Études complètes} (trigonométrique, irrationnelle) et \textbf{démonstrations} de cours.
+\end{competences}
+
+% ================= PARTIE A =================
+\partie{ink}{A · Limites}{« En S1, on lève toutes les indéterminations »}
+
+\begin{exo}{ink}{Limites usuelles et trigonométriques \etoiles2}
+Calculer, en justifiant la méthode~:
+\[
+\text{a) } \lim_{x\to0}\frac{\sin 3x}{x} \qquad
+\text{b) } \lim_{x\to0}\frac{1-\cos x}{x^2} \qquad
+\text{c) } \lim_{x\to0}\frac{\tan x}{x} \qquad
+\text{d) } \lim_{x\to\frac\pi2}\frac{\cos x}{x-\frac\pi2} \qquad
+\text{e) } \lim_{x\to+\infty}x\sin\frac1x
+\]
+\[
+\text{f) } \lim_{x\to+\infty}\left(\sqrt{x^2+3x}-\sqrt{x^2+1}\right) \qquad
+\text{g) } \lim_{x\to1}\frac{x^n-1}{x-1}\ \ (n\in\N^*) \qquad
+\text{h) } \lim_{x\to0}\frac{\sqrt{1+x}-1-\frac x2}{x^2}
+\]
+\end{exo}
+\bulle{\textbf{Pour les limites trigonométriques~:} ramène-toi à $\dfrac{\sin u}{u}\to1$ quand $u\to0$. Pour d), pose $h=x-\frac\pi2$~: le cosinus devient un sinus. Pour g), pense au \textbf{nombre dérivé} de $x\mapsto x^n$ en $1$~! Et pour h), la conjuguée, deux fois s'il le faut.}
+
+\begin{exo}{ink}{Démontrer la limite fondamentale \demo\ \etoiles3}
+\begin{enumerate}
+  \item On admet (par un argument d'aires dans le cercle trigonométrique) que pour $0<x<\frac\pi2$~: \ $\sin x\leq x\leq\tan x$. En déduire que \ $\cos x\leq\dfrac{\sin x}{x}\leq1$.
+  \item Démontrer que $\displaystyle\lim_{x\to0^+}\frac{\sin x}{x}=1$, puis, par parité, que $\displaystyle\lim_{x\to0}\frac{\sin x}{x}=1$.
+  \item En écrivant $1-\cos x=2\sin^2\frac x2$, démontrer que $\displaystyle\lim_{x\to0}\frac{1-\cos x}{x^2}=\frac12$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Comparaison \etoiles2}
+\begin{enumerate}
+  \item Déterminer \ $\displaystyle\lim_{x\to+\infty}\frac{x+2\sin x}{x-\cos x}$ \ et \ $\displaystyle\lim_{x\to+\infty}\frac{\sin x}{\sqrt x}$.
+  \item Démontrer que $\displaystyle\lim_{x\to0}x^2\sin\frac1x=0$.
+  \item Soit $f$ une fonction telle que pour tout $x>0$~: $|f(x)-2|\leq\dfrac{3}{\sqrt x}$. Que peut-on dire de $f$ en $+\infty$~? Justifier.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{ink}{Asymptotes \etoiles3}
+Soit $f(x)=x+\sqrt{x^2+4x}$, définie sur $]-\infty\,;-4]\cup[0\,;+\infty[$.
+\begin{enumerate}
+  \item Démontrer que la droite d'équation $y=2x+2$ est asymptote à $(C_f)$ en $+\infty$.
+  \item À l'aide de l'expression conjuguée, montrer que $\displaystyle\lim_{x\to-\infty}f(x)=-2$. Interpréter.
+  \item Étudier la position de $(C_f)$ par rapport à ses asymptotes.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE B =================
+\partie{lime!80!black}{B · Continuité}{« Le TVI, l'arme fatale de l'existence »}
+
+\begin{exo}{lime!80!black}{Prolongements par continuité \etoiles2}
+Montrer que chacune des fonctions suivantes admet un prolongement par continuité en $0$, et le préciser~:
+\[
+f(x)=\frac{\sin x}{x}\qquad g(x)=\frac{1-\cos x}{x}\qquad h(x)=x\sin\frac1x\qquad k(x)=\frac{\sqrt{1+x}-\sqrt{1-x}}{\sin x}
+\]
+\end{exo}
+
+\begin{exo}{lime!80!black}{TVI et équation transcendante \etoiles2}
+Soit $h(x)=\cos x-x$ sur $\left[0\,;\frac\pi2\right]$.
+\begin{enumerate}
+  \item Étudier le sens de variation de $h$. Démontrer que l'équation $\cos x=x$ admet une unique solution $\alpha$ dans $\left[0\,;\frac\pi2\right]$.
+  \item Vérifier que $0{,}7<\alpha<0{,}8$. En déduire le signe de $\cos x-x$ sur $\left[0\,;\frac\pi2\right]$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Bijection et dérivée de la réciproque \demo\ \etoiles3}
+Soit $f$ définie sur $\R$ par \ $f(x)=\dfrac{x}{\sqrt{1+x^2}}$.
+\begin{enumerate}
+  \item Montrer que $f$ est impaire et que $f'(x)=\dfrac{1}{(1+x^2)\sqrt{1+x^2}}$.
+  \item Déterminer les limites de $f$ en $\pm\infty$ et démontrer que $f$ est une bijection de $\R$ sur $]-1\,;1[$.
+  \item Démontrer que pour tout $y\in\,]-1\,;1[$~: \ $f^{-1}(y)=\dfrac{y}{\sqrt{1-y^2}}$.
+  \item Calculer $\left(f^{-1}\right)'(y)$ \textbf{de deux façons}~: avec la formule $\left(f^{-1}\right)'(y)=\dfrac1{f'\left(f^{-1}(y)\right)}$, puis directement. Comparer.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{lime!80!black}{Le théorème de la corde \demo\ \etoiles3}
+Soit $f$ une fonction continue sur $[a\,;b]$ telle que $f(a)=f(b)$. On pose $h=\dfrac{b-a}{2}$ et $g(x)=f(x+h)-f(x)$ pour $x\in[a\,;a+h]$.
+\begin{enumerate}
+  \item Justifier que $g$ est continue sur $[a\,;a+h]$ et calculer $g(a)+g(a+h)$.
+  \item En déduire qu'il existe $c\in[a\,;a+h]$ tel que $f(c+h)=f(c)$.
+  \item \textbf{Interprétation~:} un coureur parcourt $10$~km en $1$~h, en partant et en arrivant au même endroit d'un parcours aller-retour. Montrer qu'il existe un intervalle de $30$ minutes où il se trouve au même point au début et à la fin.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Astuce des grands~:} pour prouver qu'une équation $f(c)=k$ a une solution, fabrique une \textbf{fonction auxiliaire} $g$ continue qui change de signe. Si $g(a)+g(a+h)=0$, alors $g(a)$ et $g(a+h)$ sont de signes contraires (ou l'un est nul)~: le TVI conclut~!}
+
+\begin{exo}{lime!80!black}{Compter les solutions \etoiles3}
+\begin{enumerate}
+  \item Soit $u(x)=x^3-3x+1$. Dresser le tableau de variations de $u$ sur $[-2\,;2]$, puis démontrer que l'équation $u(x)=0$ admet \textbf{exactement trois} solutions dans $[-2\,;2]$, que l'on localisera chacune dans un intervalle d'amplitude $1$.
+  \item Soit $f(x)=x^2-2x$. Déterminer, en justifiant, les images par $f$ des intervalles $[0\,;3]$, $]1\,;2]$ et $[-1\,;+\infty[$.
+\end{enumerate}
+\end{exo}
+
+% ================= PARTIE C =================
+\partie{sky}{C · Dérivabilité}{« Zoomer, encore et encore »}
+
+\begin{exo}{sky}{Dérivabilité en un point \demo\ \etoiles3}
+\begin{enumerate}
+  \item Soit $f(x)=x^2\sin\dfrac1x$ si $x\neq0$ et $f(0)=0$. Démontrer que $f$ est dérivable en $0$ et calculer $f'(0)$.
+  \item Soit $g(x)=\sqrt{1-\cos x}$. En utilisant $1-\cos x=2\sin^2\frac x2$, étudier la dérivabilité de $g$ à gauche et à droite en $0$. Interpréter graphiquement.
+  \item Soit $k(x)=(x-1)\sqrt{x^2-1}$ sur $[1\,;+\infty[$. Étudier la dérivabilité de $k$ à droite en $1$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Calculs de dérivées \etoiles2}
+Calculer la dérivée de chacune des fonctions sur un intervalle où elle est dérivable~:
+\[
+f_1(x)=\sin^2(3x)\qquad f_2(x)=\frac{\cos x}{1+\sin x}\qquad f_3(x)=\tan(2x)\qquad f_4(x)=\sqrt{1+\cos^2x}\qquad f_5(x)=x^2\cos\frac1x
+\]
+\[ f_6(x)=\sin\sqrt x\qquad f_7(x)=\frac{\sin x}{x}\qquad f_8(x)=\cos^3x-3\cos x \]
+\end{exo}
+
+\begin{exo}{sky}{Dérivées successives \demo\ \etoiles3}
+Démontrer par récurrence que pour tout entier $n\geq1$~:
+\begin{enumerate}
+  \item si $f(x)=\dfrac{1}{1-x}$, alors \ $f^{(n)}(x)=\dfrac{n!}{(1-x)^{n+1}}$ \ pour $x\neq1$~;
+  \item si $g(x)=\sin x$, alors \ $g^{(n)}(x)=\sin\left(x+n\dfrac\pi2\right)$. En déduire $\cos^{(n)}(x)$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{sky}{Encadrements par les accroissements finis \demo\ \etoiles3}
+\begin{enumerate}
+  \item À l'aide de l'inégalité des accroissements finis, démontrer que pour tous réels $a$ et $b$~: \ $|\sin a-\sin b|\leq|a-b|$.
+  \item En étudiant successivement des fonctions bien choisies sur $[0\,;+\infty[$, démontrer que pour tout $x\geq0$~:
+  \[ \sin x\leq x,\qquad 1-\frac{x^2}{2}\leq\cos x,\qquad x-\frac{x^3}{6}\leq\sin x. \]
+  \item En déduire un encadrement de $\sin(0{,}1)$ d'amplitude inférieure à $10^{-3}$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Méthode en cascade~:} pour montrer $\varphi(x)\geq0$ sur $[0\,;+\infty[$ avec $\varphi(0)=0$, il suffit que $\varphi$ soit \textbf{croissante}, donc que $\varphi'\geq0$… et $\varphi'$ s'étudie souvent grâce à l'inégalité \textbf{précédente}. Chaque marche t'aide à monter la suivante~!}
+
+% ================= PARTIE D =================
+\partie{violet}{D · Études de fonctions}{« Le niveau Bac S1 »}
+
+\begin{exo}{violet}{Problème 1~: une fonction trigonométrique \etoiles3}
+Soit $f$ définie sur $\R$ par \ $f(x)=\sin x+\dfrac12\sin 2x$.
+\begin{enumerate}
+  \item Montrer que $f$ est $2\pi$-périodique et impaire. Justifier qu'il suffit de l'étudier sur $[0\,;\pi]$.
+  \item Démontrer que $f'(x)=(2\cos x-1)(\cos x+1)$. Étudier son signe sur $[0\,;\pi]$ et dresser le tableau de variations de $f$ sur $[0\,;\pi]$.
+  \item Calculer le maximum de $f$ \ (on trouvera $\frac{3\sqrt3}{4}$). Donner une équation de la tangente à $(C_f)$ en $O$.
+  \item Tracer $(C_f)$ sur $[-\pi\,;3\pi]$ en utilisant les symétries.
+  \item Résoudre dans $[0\,;\pi]$ l'équation $f(x)=0$, puis l'inéquation $f(x)\geq\sin x$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Problème 2~: une fonction irrationnelle et sa réciproque \etoiles3}
+Soit $f$ définie sur $D=\,]-\infty\,;-1]\cup[1\,;+\infty[$ par \ $f(x)=x+\sqrt{x^2-1}$.
+\begin{enumerate}
+  \item Étudier la dérivabilité de $f$ en $-1$ (à gauche) et en $1$ (à droite). Interpréter.
+  \item Déterminer les limites de $f$ en $\pm\infty$. Montrer que $(C_f)$ admet l'axe des abscisses pour asymptote en $-\infty$ et la droite d'équation $y=2x$ pour asymptote en $+\infty$.
+  \item Calculer $f'(x)$ et montrer que $f'(x)$ a le signe de $x+\sqrt{x^2-1}$. En déduire le tableau de variations de $f$.
+  \item Montrer que la restriction $g$ de $f$ à $[1\,;+\infty[$ est une bijection sur un intervalle $J$ à préciser, et que pour tout $y\in J$~: \ $g^{-1}(y)=\dfrac{y^2+1}{2y}$.
+  \item \demo\ Démontrer que pour tout $x\in D$~: \ $f(x)\times\left(x-\sqrt{x^2-1}\right)=1$. En déduire une autre expression de $f$ sur $]-\infty\,;-1]$ et retrouver la limite en $-\infty$.
+  \item Tracer $(C_f)$, ses asymptotes et la courbe de $g^{-1}$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{Problème 3~: fonction auxiliaire \etoiles3}
+\textbf{Partie A.} Soit $u(x)=x^3-3x+4$ sur $\R$.
+\begin{enumerate}
+  \item Étudier les variations de $u$. Démontrer que l'équation $u(x)=0$ admet une unique solution $\beta$ et que $-2{,}2<\beta<-2{,}1$.
+  \item En déduire le signe de $u(x)$ suivant les valeurs de $x$.
+\end{enumerate}
+\textbf{Partie B.} Soit $f(x)=\dfrac{x^3-2}{x^2-1}$ sur $\R\setminus\{-1\,;1\}$.
+\begin{enumerate}
+  \item Montrer que $f(x)=x+\dfrac{x-2}{x^2-1}$. Étudier les limites de $f$ aux bornes et préciser les asymptotes de $(C_f)$.
+  \item Démontrer que $f'(x)=\dfrac{x\,u(x)}{(x^2-1)^2}$ et dresser le tableau de variations de $f$.
+  \item Démontrer que $f(\beta)=\dfrac32\beta$ \ (utiliser $\beta^3=3\beta-4$) et en déduire un encadrement de $f(\beta)$.
+\end{enumerate}
+\end{exo}
+
+\begin{exo}{violet}{La réciproque de la tangente \demo\ \etoiles3}
+Soit $f$ la restriction de la fonction tangente à $I=\left]-\frac\pi2\,;\frac\pi2\right[$.
+\begin{enumerate}
+  \item Démontrer que $f'(x)=1+\tan^2x$ et que $f$ est une bijection de $I$ sur $\R$. On note $\varphi=f^{-1}$.
+  \item Justifier que $\varphi$ est dérivable sur $\R$ et démontrer que pour tout réel $y$~: \ $\varphi'(y)=\dfrac{1}{1+y^2}$.
+  \item Calculer $\varphi(0)$, $\varphi(1)$, $\varphi\left(\sqrt3\right)$, puis les limites de $\varphi$ en $\pm\infty$. Dresser le tableau de variations de $\varphi$ et donner l'équation de sa tangente en $0$.
+  \item \textbf{Bonus~:} démontrer que pour tout $x\in\left[0\,;\frac\pi2\right[$~: $\tan x\geq x$, puis que pour tout $y\geq0$~: $\varphi(y)\leq y$.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{À retenir~:} la formule $\left(f^{-1}\right)'(y)=\dfrac{1}{f'\left(f^{-1}(y)\right)}$ ne s'applique que si $f'$ \textbf{ne s'annule pas} au point considéré. Ici $1+\tan^2x\geq1$~: aucun souci, et le résultat $\dfrac1{1+y^2}$ est d'une simplicité magique~!}
+
+\begin{exo}{violet}{Vrai ou faux~? Justifier \demo\ \etoiles3}
+\begin{enumerate}
+  \item Si $f$ est continue sur $\R$ et $\displaystyle\lim_{x\to-\infty}f(x)=-\infty$, $\displaystyle\lim_{x\to+\infty}f(x)=+\infty$, alors $f$ s'annule au moins une fois.
+  \item Si $f$ est dérivable sur $\R$ et $f'$ est bornée, alors $f$ est bornée.
+  \item Si $|f(x)|\leq x^2$ pour tout réel $x$, alors $f$ est dérivable en $0$.
+  \item Si $f$ est dérivable sur $\R$, alors $f'$ est continue sur $\R$ \ {\small(penser à l'exercice 10)}.
+\end{enumerate}
+\end{exo}
+\bulle{\textbf{Le mot de la fin~:} en Terminale S1, chaque résultat se \textbf{démontre}. Cite le théorème utilisé (TVI, comparaison, accroissements finis…) et vérifie ses hypothèses une par une. C'est cette rigueur qui fait la différence au Bac~! \hfill\textbf{M. Thiam}}
+
+\end{document}
