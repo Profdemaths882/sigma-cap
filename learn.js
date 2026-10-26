@@ -4,7 +4,7 @@
 window.SigmaLearn = (function () {
   'use strict';
   const DISPO = ['2nde S'];                       // classes dont le contenu est prêt
-  const VERSION = '202610261954';
+  const VERSION = '202610262002';
   let ctx = null;
   const L = { classe: '', chap: 0, tab: 'cours', evalOpen: {}, evalShow: {}, plain: {} };
 
