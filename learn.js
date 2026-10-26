@@ -4,7 +4,7 @@
 window.SigmaLearn = (function () {
   'use strict';
   const DISPO = ['2nde S'];                       // classes dont le contenu est prêt
-  const VERSION = '202610262019';
+  const VERSION = '202610262022';
   let ctx = null;
   const L = { classe: '', chap: 0, tab: 'cours', evalOpen: {}, evalShow: {}, plain: {} };
 
@@ -165,21 +165,21 @@ window.SigmaLearn = (function () {
   const SYM = ['√', '²', '³', 'π', '≤', '≥', '≠', '∈', '∉', '∞', '⇒', '⇔', '∪', '∩', '∅', '→', '×', '÷', '±', '|x|', '≈', '°'];
   if (!L.photos) L.photos = {};
   function redHTML(e) {
-    if (ctx.S.role !== 'eleve') return `<details class="lr-red"><summary>✍️ Ma rédaction <span class="pill neutral">aperçu professeur</span></summary>
+    if (ctx.S.role !== 'eleve') return `<details class="lr-red"><summary>✍️ Ma rédaction : écrire ou 📷 photographier ma réponse <span class="pill neutral">aperçu professeur</span></summary>
       <p class="small muted" style="margin:0">Ici, l'élève écrit sa solution (avec les touches √ ² π ≤ ⇒ ⇔…) et/ou photographie son cahier, puis clique sur « Envoyer à mon prof ». Vous retrouvez les envois dans votre espace : onglet « Cours en ligne » → « Rédactions des élèves », pour annoter, noter et commenter.</p>
       <div class="lr-sym">${SYM.slice(0, 12).map(x => `<button type="button" class="btn sm" disabled>${esc(x)}</button>`).join('')}</div>
       <textarea class="lr-txt" rows="3" disabled placeholder="Zone de rédaction de l'élève…"></textarea>
-      <div class="toolbar"><button type="button" class="btn sm" disabled>📷 Photographier mon cahier</button><button type="button" class="btn sm primary" disabled>Envoyer à mon prof</button></div></details>`;
+      <div class="toolbar"><button type="button" class="btn go" disabled>📷 Prendre ma réponse en photo</button><button type="button" class="btn sm primary" disabled>Envoyer à mon prof</button></div></details>`;
     const r = renduOf(e), st = r && (R_ST[r.statut] || R_ST.rendu), open = L.redOpen === e.id, ph = L.photos[e.id] || [];
     const locked = r && r.statut !== 'rendu';
-    return `<details class="lr-red" data-x="${esc(e.id)}" ${open ? 'open' : ''}><summary>✍️ Ma rédaction${st ? ` <span class="pill ${st[1]}">${st[0]}</span>${r.note !== '' && r.statut === 'corrige' ? ` <b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}` : ''}</summary>
+    return `<details class="lr-red" data-x="${esc(e.id)}" ${open ? 'open' : ''}><summary>✍️ Ma rédaction : écrire ou 📷 photographier ma réponse${st ? ` <span class="pill ${st[1]}">${st[0]}</span>${r.note !== '' && r.statut === 'corrige' ? ` <b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}` : ''}</summary>
       ${r ? `<div class="toolbar"><span class="small muted grow">Envoyée le ${esc(r.date.split('-').reverse().join('/'))}${r.fichiers.length ? ' · ' + r.fichiers.length + ' photo' + (r.fichiers.length > 1 ? 's' : '') : ''}</span><button type="button" class="btn sm ${r.statut === 'rendu' ? '' : 'primary'}" data-lr="rvoir" data-v="${esc(r.id)}">${r.statut === 'rendu' ? 'Voir ce que j\'ai envoyé' : 'Voir la correction de mon prof'}</button></div>` : ''}
       ${locked ? '<p class="small muted">Ton professeur a commencé à corriger cette rédaction : elle ne peut plus être modifiée.</p>' : `
       <p class="small muted" style="margin:0">Écris ta solution comme sur ta copie (phrases, « donc », « or »…), et/ou prends ton cahier en photo. Ton brouillon reste gardé sur ce téléphone.</p>
       <div class="lr-sym" role="group" aria-label="Symboles">${SYM.map(x => `<button type="button" class="btn sm" data-lr="sym" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
       <textarea class="lr-txt" rows="7" maxlength="5000" placeholder="Ma rédaction…">${esc(draftGet(e.id))}</textarea>
       <div class="rendu-prev">${ph.map((u, j) => `<figure><img src="${u}" alt="Photo ${j + 1}"><button type="button" class="btn sm ghost" data-lr="phrm" data-v="${j}" aria-label="Retirer la photo ${j + 1}">✕</button><figcaption>Photo ${j + 1}</figcaption></figure>`).join('')}</div>
-      <div class="toolbar"><label class="btn sm">📷 Photographier mon cahier<input type="file" accept="image/*" multiple hidden class="lr-file"></label>
+      <div class="toolbar"><label class="btn go">📷 Prendre ma réponse en photo<input type="file" accept="image/*" multiple hidden class="lr-file"></label>
         <button type="button" class="btn sm primary" data-lr="rsend">${r ? 'Renvoyer à mon prof (remplace)' : 'Envoyer à mon prof'}</button><span class="small lr-rmsg" aria-live="polite"></span></div>`}
     </details>`;
   }
