@@ -4,7 +4,7 @@
 window.SigmaLearn = (function () {
   'use strict';
   const DISPO = ['2nde S'];                       // classes dont le contenu est prêt
-  const VERSION = '202610252056';
+  const VERSION = '202610261954';
   let ctx = null;
   const L = { classe: '', chap: 0, tab: 'cours', evalOpen: {}, evalShow: {}, plain: {} };
 
@@ -142,7 +142,7 @@ window.SigmaLearn = (function () {
         <div class="lr-prog"><i style="width:${Math.round(ok / ch.exos.length * 100)}%"></i></div></div></div>
       <div class="seg" role="group" aria-label="Filtrer">${[['tous', 'Tous'], ['1', '★ Application'], ['2', '★★ Entraînement'], ['3', '★★★ Approfondissement'], ['demo', '✍️ Démonstrations']].map(([k, l]) => `<button type="button" data-lr="efilt" data-v="${k}" aria-pressed="${f === k}">${l} (${nb[k] || 0})</button>`).join('')}</div></div>`;
     return bar + ch.exos.map((e, i) => keep(e) ? `<article class="panel lr-exo${e.demo ? ' lr-demo' : ''}" data-ei="${i}">
-      <div class="toolbar"><h3 class="grow">Exercice ${i + 1}${e.titre ? ' · ' + esc(e.titre) : ''}</h3>${e.demo ? '<span class="pill lr-dp">DÉMONSTRATION</span>' : ''}${e.niveau ? `<span class="lr-niv">${'★'.repeat(e.niveau)}</span>` : ''}${done[i] ? '<span class="pill ok">Réussi</span>' : ''}</div>
+      <div class="toolbar"><h3 class="grow">Exercice ${i + 1}${e.titre ? ' · ' + esc(e.titre) : ''}</h3>${e.demo ? '<span class="pill lr-dp">DÉMONSTRATION</span>' : ''}${e.niveau ? `<span class="lr-niv">${'★'.repeat(e.niveau)}</span>` : ''}${done[e.id] ? '<span class="pill ok">Réussi</span>' : ''}</div>
       <div class="lr-enonce">${e.enonce}</div>
       ${(e.questions || []).map((q, k) => `<div class="lr-qq" data-k="${k}"><div class="lr-ql">${q.label}</div>
         ${q.type === 'qcm' ? `<div class="lr-choix">${q.choix.map((c, j) => `<label class="chk"><input type="radio" name="r-${i}-${k}" value="${j}"> <span>${c}</span></label>`).join('')}</div>`
@@ -150,9 +150,34 @@ window.SigmaLearn = (function () {
         <div class="lr-fb" aria-live="polite"></div>
         ${q.indice ? `<details class="lr-ind"><summary>Indice</summary><div>${q.indice}</div></details>` : ''}</div>`).join('')}
       ${e.pistes ? `<details class="lr-ind"><summary>Pistes pour démarrer</summary><div>${e.pistes}</div></details>` : ''}
-      <div class="toolbar">${(e.questions || []).length ? `<button type="button" class="btn primary sm" data-lr="check" data-v="${i}">Vérifier mes réponses</button>` : ''}<button type="button" class="btn sm" data-lr="sol" data-v="${i}">${e.demo ? 'Voir la démonstration rédigée' : 'Voir la solution'}</button>${!(e.questions || []).length && !done[i] ? `<button type="button" class="btn sm go" data-lr="selfok" data-v="${i}">J'ai réussi seul(e)</button>` : ''}</div>
+      <div class="toolbar">${(e.questions || []).length ? `<button type="button" class="btn primary sm" data-lr="check" data-v="${i}">Vérifier mes réponses</button>` : ''}<button type="button" class="btn sm" data-lr="sol" data-v="${i}">${e.demo ? 'Voir la démonstration rédigée' : 'Voir la solution'}</button>${!(e.questions || []).length && !done[e.id] ? `<button type="button" class="btn sm go" data-lr="selfok" data-v="${i}">J'ai réussi seul(e)</button>` : ''}</div>
       <div class="lr-sol" hidden>${e.solution || ''}</div>
-    </article>` : '').join('') + `<p class="small muted">Écris les fractions avec « / » (ex. 3/4), les racines avec « √ » ou « racine » (ex. 2√3), π avec « π » ou « pi », les décimaux avec une virgule. Pour un ensemble de solutions, sépare par « ; ». Pour une démonstration : rédige-la sur ton cahier, puis compare avec la démonstration rédigée.</p>`;
+      ${redHTML(e)}
+    </article>` : '').join('') + `<p class="small muted">Écris les fractions avec « / » (ex. 3/4), les racines avec « √ » ou « racine » (ex. 2√3), π avec « π » ou « pi », les décimaux avec une virgule. Pour un ensemble de solutions, sépare par « ; ». Pour une démonstration : rédige-la (ici ou sur ton cahier), compare avec la démonstration rédigée, et envoie-la à ton professeur avec « Ma rédaction ».</p>`;
+  }
+
+  /* « Ma rédaction » : l'élève écrit et/ou photographie sa solution et l'envoie à son prof */
+  const RKEY = id => 'sigma-red-' + L.classe + '-' + id;
+  const draftGet = id => { try { return localStorage.getItem(RKEY(id)) || ''; } catch (_) { return ''; } };
+  const draftSet = (id, v) => { try { v ? localStorage.setItem(RKEY(id), v) : localStorage.removeItem(RKEY(id)); } catch (_) { } };
+  const renduOf = e => (ctx.S.rendus || []).find(r => r.docId === 'exo:' + L.classe + ':' + e.id);
+  const R_ST = { rendu: ['Envoyée · en attente de correction', 'warn'], annote: ['Annotée par ton prof', 'neutral'], corrige: ['Corrigée', 'ok'] };
+  const SYM = ['√', '²', '³', 'π', '≤', '≥', '≠', '∈', '∉', '∞', '⇒', '⇔', '∪', '∩', '∅', '→', '×', '÷', '±', '|x|', '≈', '°'];
+  if (!L.photos) L.photos = {};
+  function redHTML(e) {
+    if (ctx.S.role !== 'eleve') return '';
+    const r = renduOf(e), st = r && (R_ST[r.statut] || R_ST.rendu), open = L.redOpen === e.id, ph = L.photos[e.id] || [];
+    const locked = r && r.statut !== 'rendu';
+    return `<details class="lr-red" data-x="${esc(e.id)}" ${open ? 'open' : ''}><summary>✍️ Ma rédaction${st ? ` <span class="pill ${st[1]}">${st[0]}</span>${r.note !== '' && r.statut === 'corrige' ? ` <b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}` : ''}</summary>
+      ${r ? `<div class="toolbar"><span class="small muted grow">Envoyée le ${esc(r.date.split('-').reverse().join('/'))}${r.fichiers.length ? ' · ' + r.fichiers.length + ' photo' + (r.fichiers.length > 1 ? 's' : '') : ''}</span><button type="button" class="btn sm ${r.statut === 'rendu' ? '' : 'primary'}" data-lr="rvoir" data-v="${esc(r.id)}">${r.statut === 'rendu' ? 'Voir ce que j\'ai envoyé' : 'Voir la correction de mon prof'}</button></div>` : ''}
+      ${locked ? '<p class="small muted">Ton professeur a commencé à corriger cette rédaction : elle ne peut plus être modifiée.</p>' : `
+      <p class="small muted" style="margin:0">Écris ta solution comme sur ta copie (phrases, « donc », « or »…), et/ou prends ton cahier en photo. Ton brouillon reste gardé sur ce téléphone.</p>
+      <div class="lr-sym" role="group" aria-label="Symboles">${SYM.map(x => `<button type="button" class="btn sm" data-lr="sym" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+      <textarea class="lr-txt" rows="7" maxlength="5000" placeholder="Ma rédaction…">${esc(draftGet(e.id))}</textarea>
+      <div class="rendu-prev">${ph.map((u, j) => `<figure><img src="${u}" alt="Photo ${j + 1}"><button type="button" class="btn sm ghost" data-lr="phrm" data-v="${j}" aria-label="Retirer la photo ${j + 1}">✕</button><figcaption>Photo ${j + 1}</figcaption></figure>`).join('')}</div>
+      <div class="toolbar"><label class="btn sm">📷 Photographier mon cahier<input type="file" accept="image/*" multiple hidden class="lr-file"></label>
+        <button type="button" class="btn sm primary" data-lr="rsend">${r ? 'Renvoyer à mon prof (remplace)' : 'Envoyer à mon prof'}</button><span class="small lr-rmsg" aria-live="polite"></span></div>`}
+    </details>`;
   }
 
   /* évaluations */
@@ -173,8 +198,17 @@ window.SigmaLearn = (function () {
       </article>`; }).join('')}`;
   }
 
+  function redraw(d) { const y = window.scrollY; draw(d); window.scrollTo(0, y); }
   function bind(d, ch) {
     const main = $('#lr-main');
+    main.oninput = ev => { const ta = ev.target.closest('.lr-txt'); if (ta) draftSet(ta.closest('.lr-red').dataset.x, ta.value); };
+    main.onchange = async ev => {
+      const fi = ev.target.closest('.lr-file'); if (!fi) return;
+      const box = fi.closest('.lr-red'), id = box.dataset.x, msg = $('.lr-rmsg', box), arr = L.photos[id] = L.photos[id] || [];
+      try { for (const f of fi.files) { if (arr.length >= 6) { msg.textContent = '6 photos au maximum.'; break; } arr.push(await ctx.shrink(f)); } } catch (x) { msg.textContent = x.message; }
+      L.redOpen = id; redraw(d);
+    };
+    if (!main._tg) { main._tg = 1; main.addEventListener('toggle', ev => { const dt = ev.target; if (dt.classList && dt.classList.contains('lr-red')) L.redOpen = dt.open ? dt.dataset.x : (L.redOpen === dt.dataset.x ? null : L.redOpen); }, true); }
     main.onclick = async ev => {
       const el = ev.target.closest('[data-lr]'); if (!el) return;
       const a = el.dataset.lr, v = el.dataset.v;
@@ -208,10 +242,22 @@ window.SigmaLearn = (function () {
           fb.className = 'lr-fb ' + (r ? 'ok' : 'bad'); fb.textContent = r ? '✅ Juste !' : '❌ Ce n\'est pas ça. Regarde l\'indice puis réessaie.';
           if (r) good++;
         });
-        if (good === (e.questions || []).length) { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][i] = 1; saveProg(L.classe, p); }
+        if (good === (e.questions || []).length) { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][e.id] = 1; saveProg(L.classe, p); }
       }
       else if (a === 'efilt') { L.exoFiltre = v; draw(d); }
-      else if (a === 'selfok') { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][+v] = 1; saveProg(L.classe, p); draw(d); }
+      else if (a === 'selfok') { const p = prog(L.classe), k = 'e-' + ch.id; p[k] = p[k] || {}; p[k][ch.exos[+v].id] = 1; saveProg(L.classe, p); redraw(d); }
+      else if (a === 'rvoir') ctx.openRendu(v);
+      else if (a === 'sym') { const ta = $('.lr-txt', el.closest('.lr-red')); const s0 = ta.selectionStart, s1 = ta.selectionEnd; ta.value = ta.value.slice(0, s0) + v + ta.value.slice(s1); ta.focus(); ta.selectionStart = ta.selectionEnd = s0 + v.length; draftSet(el.closest('.lr-red').dataset.x, ta.value); }
+      else if (a === 'phrm') { const id = el.closest('.lr-red').dataset.x; (L.photos[id] || []).splice(+v, 1); L.redOpen = id; redraw(d); }
+      else if (a === 'rsend') {
+        const box = el.closest('.lr-red'), id = box.dataset.x, e = ch.exos.find(x => x.id === id), txt = $('.lr-txt', box).value.trim(), ph = L.photos[id] || [], msg = $('.lr-rmsg', box);
+        if (txt.length < 3 && !ph.length) { msg.textContent = 'Écris ta rédaction ou ajoute une photo.'; return; }
+        el.disabled = true; msg.textContent = 'Envoi en cours…';
+        try {
+          ctx.applyData(await ctx.call('rendre', { exo: { id, titre: (ch.titre + ' · ' + (e.titre || id)).slice(0, 90) }, texte: txt, files: ph.map(data => ({ data })) }));
+          draftSet(id, ''); delete L.photos[id]; L.redOpen = id; ctx.toast('Rédaction envoyée à ton professeur'); redraw(d);
+        } catch (x) { if (/Session expirée/.test(x.message)) return ctx.expired(); msg.textContent = /Action inconnue|Devoir introuvable/.test(x.message) ? 'Le serveur n\'est pas encore à jour : réessaie plus tard.' : x.message; el.disabled = false; }
+      }
       else if (a === 'sol') { const card = main.querySelector(`.lr-exo[data-ei="${v}"]`), s = $('.lr-sol', card); s.hidden = !s.hidden; if (!s.hidden) maths(s); }
       else if (a === 'esujet') { L.evalOpen[v] = !L.evalOpen[v]; draw(d); }
       else if (a === 'ecorr') {

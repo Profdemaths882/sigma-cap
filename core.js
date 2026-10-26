@@ -464,12 +464,23 @@ var SigmaCore = (function () {
           need(sess, ['eleve']);
           if (!st.saveFile) throw new Error("Le serveur n'est pas à jour.");
           var sr = find('students', sess.id); if (!sr || !isActive(sr)) throw new Error('Ton inscription doit être confirmée pour rendre un devoir.');
-          var dv = find('docs', req.docId); if (!dv || dv.aRendre !== 'oui') throw new Error('Devoir introuvable.');
-          if (asList(dv.classes).indexOf(sr.classe) < 0 || asList(sr.matieres).indexOf(dv.matiere) < 0) throw new Error("Ce devoir n'est pas pour ta classe.");
+          var dv, ex = req.exo;
+          if (ex) {
+            // rédaction d'un exercice du cours en ligne, envoyée au prof de maths de la classe
+            var xid = String(ex.id || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40); if (!xid) throw new Error('Exercice inconnu.');
+            if (asList(sr.matieres).indexOf('Maths') < 0) throw new Error("Tu n'es pas inscrit(e) en maths.");
+            dv = { id: 'exo:' + sr.classe + ':' + xid, titre: ('Exercice en ligne · ' + clean(ex.titre, 90)).slice(0, 110), matiere: 'Maths', limite: '' };
+            if (st.read('rendus').filter(function (x) { return x.studentId === sr.id && x.statut === 'rendu' && String(x.docId).indexOf('exo:') === 0; }).length >= 40)
+              throw new Error("Tu as déjà 40 rédactions en attente de correction : attends que ton professeur en corrige quelques-unes.");
+          } else {
+            dv = find('docs', req.docId); if (!dv || dv.aRendre !== 'oui') throw new Error('Devoir introuvable.');
+            if (asList(dv.classes).indexOf(sr.classe) < 0 || asList(sr.matieres).indexOf(dv.matiere) < 0) throw new Error("Ce devoir n'est pas pour ta classe.");
+          }
+          var txt = String(req.texte == null ? '' : req.texte).replace(/[\u0000-\u0008\u000b-\u001f]/g, '').trim().slice(0, 5000);
           var old = st.read('rendus').filter(function (x) { return x.docId === dv.id && x.studentId === sr.id; })[0];
           if (old && old.statut !== 'rendu') throw new Error('Ton devoir est déjà corrigé : tu ne peux plus le modifier.');
           var fl = Array.isArray(req.files) ? req.files : [];
-          if (!fl.length) throw new Error('Ajoute au moins une photo de ta copie.');
+          if (!fl.length && txt.length < 3) throw new Error(ex ? 'Écris ta rédaction ou ajoute une photo de ton cahier.' : 'Ajoute au moins une photo de ta copie.');
           if (fl.length > 8) throw new Error('8 photos au maximum.');
           var tot = 0, parts = fl.map(function (x) {
             var b = String((x && x.data) || '').replace(/^data:[^,]*,/, ''), mm = RENDU_MIME[b.slice(0, 5)] || RENDU_MIME[b.slice(0, 4)];
@@ -481,7 +492,7 @@ var SigmaCore = (function () {
           var files = parts.map(function (p, i) { var sv = st.saveFile(base + '-' + (i + 1) + p.mm[1], p.b, p.mm[0], 'rendus'); return { id: sv.id, url: sv.url, mime: p.mm[0] }; });
           if (old && st.deleteFile) { try { JSON.parse(old.fichiers || '[]').forEach(function (f) { try { st.deleteFile(f.id); } catch (e) { } }); } catch (e) { } }
           st.upsert('rendus', { id: old ? old.id : 'ren-' + st.uuid().replace(/-/g, '').slice(0, 10), docId: dv.id, studentId: sr.id, eleve: sr.prenom + ' ' + sr.nom, classe: sr.classe, matiere: dv.matiere,
-            titre: dv.titre, date: today(), retard: dv.limite && today() > dv.limite ? 'oui' : '', fichiers: JSON.stringify(files), commentaire: clean(req.commentaire, 300),
+            titre: dv.titre, date: today(), retard: dv.limite && today() > dv.limite ? 'oui' : '', fichiers: JSON.stringify(files), texte: txt, commentaire: clean(req.commentaire, 300),
             statut: 'rendu', note: '', appreciation: '', corrigePar: '', corrigeLe: '' });
           return dataFor(sess);
         }

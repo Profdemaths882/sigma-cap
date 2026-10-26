@@ -835,7 +835,8 @@
     const dispo = window.SigmaLearn ? SigmaLearn.DISPO : [];
     return `<div class="panel"><h3>Cours en ligne, quiz, exercices et évaluations type</h3>
       <p class="small muted" style="margin:4px 0 10px">Les élèves inscrits (paiement validé) y accèdent depuis leur espace. Les corrections des évaluations restent chiffrées tant que vous ne les débloquez pas${S.role === 'admin' ? '' : ' (déblocage réservé aux gestionnaires)'}.</p>
-      ${dispo.length ? `<p>Classes prêtes : ${dispo.map(c => `<b>${esc(c)}</b>`).join(', ')}.</p><a class="btn primary" href="#apprendre">Ouvrir le cours en ligne${S.role === 'admin' ? ' et gérer les évaluations' : ''}</a>` : '<p class="muted">Aucun contenu pour l\'instant.</p>'}</div>`;
+      ${dispo.length ? `<p>Classes prêtes : ${dispo.map(c => `<b>${esc(c)}</b>`).join(', ')}.</p><a class="btn primary" href="#apprendre">Ouvrir le cours en ligne${S.role === 'admin' ? ' et gérer les évaluations' : ''}</a>` : '<p class="muted">Aucun contenu pour l\'instant.</p>'}</div>
+      ${exoRendusHTML()}`;
   }
 
   /* ---------- fiches d'exercices et évaluations (PDF) ---------- */
@@ -949,6 +950,16 @@
       rd.readAsDataURL(file);
     });
   }
+  // rédactions envoyées depuis les exercices du cours en ligne
+  function exoRendusHTML() {
+    const rs = (S.rendus || []).filter(r => String(r.docId).indexOf('exo:') === 0).sort((a, b) => (a.statut === 'corrige') - (b.statut === 'corrige') || String(b.date).localeCompare(String(a.date)));
+    const aCor = rs.filter(r => r.statut !== 'corrige').length;
+    return `<div class="panel"><h3>Rédactions des élèves sur les exercices en ligne${aCor ? ` <span class="pill warn">${aCor} à corriger</span>` : ''}</h3>
+      ${rs.length ? `<div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>Exercice</th><th>État</th><th></th></tr></thead><tbody>${rs.map(r => { const st = R_STAT[r.statut] || R_STAT.rendu;
+        return `<tr><td><b>${esc(r.eleve)}</b><span class="sub">${esc(r.classe)}</span></td><td>${esc(String(r.titre).replace(/^Exercice en ligne · /, ''))}<span class="sub">${esc(dateLabel(r.date))} · ${r.texte ? 'texte' : ''}${r.texte && r.fichiers.length ? ' + ' : ''}${r.fichiers.length ? r.fichiers.length + ' photo' + (r.fichiers.length > 1 ? 's' : '') : ''}</span></td>
+          <td><span class="pill ${st[1]}">${st[0]}</span>${r.note !== '' ? ` <b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}</td><td><button class="btn sm primary" data-act="corriger" data-id="${esc(r.id)}">${r.statut === 'corrige' ? 'Revoir' : 'Corriger'}</button></td></tr>`; }).join('')}</tbody></table></div>`
+        : '<p class="muted">Aucune rédaction pour l\'instant. Les élèves peuvent écrire ou photographier leur solution sous chaque exercice et vous l\'envoyer.</p>'}</div>`;
+  }
   function rendreModal(docId) {
     const d = allDocs().find(x => x.id === docId); if (!d) return;
     let files = [];
@@ -995,16 +1006,18 @@
   // visionneuse (élève) et correction (prof) : une page à la fois
   function renduModal(rid, page) {
     const r = (S.rendus || []).find(x => x.id === rid); if (!r) return;
-    const prof = S.role !== 'eleve', n = r.fichiers.length, i = Math.max(0, Math.min(n - 1, page || 0)), f = r.fichiers[i];
+    const prof = S.role !== 'eleve', n = r.fichiers.length, i = Math.max(0, Math.min(n - 1, page || 0)), f = r.fichiers[i] || null;
     const nav = n > 1 ? `<div class="rendu-nav">${r.fichiers.map((x, j) => `<button class="btn sm ${j === i ? 'primary' : ''}" data-pg="${j}">Page ${j + 1}${x.annot ? ' ✎' : ''}</button>`).join('')}</div>` : '';
     const form = prof ? `<div class="grid2 rendu-form"><label class="f">Note /20 <span class="h">facultatif</span><input id="c-note" inputmode="decimal" value="${esc(String(r.note || '').replace('.', ','))}"></label>
         <label class="f" style="grid-column:1/-1">Appréciation<textarea id="c-app" rows="2" maxlength="400">${esc(r.appreciation || '')}</textarea></label></div><p class="err" id="c-err" hidden></p>` : '';
-    openModal((prof ? r.eleve + ' · ' : '') + r.titre, `${r.commentaire ? `<p class="small"><b>Message de l'élève :</b> ${esc(r.commentaire)}</p>` : ''}${nav}
-      <div class="rendu-view" id="rv"><p class="muted">Chargement de la page…</p></div>${form}`,
-      prof ? `<button class="btn" data-act="close">Fermer</button>${f.mime !== 'application/pdf' ? `<button class="btn" id="c-annot">✎ Annoter cette page</button>` : ''}<button class="btn primary" id="c-save">Enregistrer la correction</button>` : `<button class="btn" data-act="close">Fermer</button>`);
+    const res = !prof && r.statut === 'corrige' ? `<div class="rendu-res callout">${r.note !== '' ? `<b class="rendu-note">${esc(String(r.note).replace('.', ','))}/20</b>` : ''}${r.appreciation ? `<p>${esc(r.appreciation)}</p>` : ''}<span class="small muted">${esc(r.corrigePar)} · ${esc(dateLabel(r.corrigeLe))}</span></div>` : '';
+    openModal((prof ? r.eleve + ' · ' : '') + r.titre, `${res}${r.commentaire ? `<p class="small"><b>Message de l'élève :</b> ${esc(r.commentaire)}</p>` : ''}
+      ${r.texte ? `<div class="rendu-texte"><b class="small">${prof ? 'Rédaction de l\'élève' : 'Ma rédaction'}</b><pre>${esc(r.texte)}</pre></div>` : ''}${nav}
+      ${f ? `<div class="rendu-view" id="rv"><p class="muted">Chargement de la page…</p></div>` : ''}${form}`,
+      prof ? `<button class="btn" data-act="close">Fermer</button>${f && f.mime !== 'application/pdf' ? `<button class="btn" id="c-annot">✎ Annoter cette page</button>` : ''}<button class="btn primary" id="c-save">Enregistrer la correction</button>` : `<button class="btn" data-act="close">Fermer</button>`);
     $('#modal-root .modal').classList.add('wide');
     $('#modal-root').querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => renduModal(rid, +b.dataset.pg)));
-    loadPhoto(rid, i, !!f.annot).then(u => {
+    if (f) loadPhoto(rid, i, !!f.annot).then(u => {
       const v = $('#rv'); if (!v) return;
       v.innerHTML = f.mime === 'application/pdf' && !f.annot ? `<a class="btn primary" href="${u}" download="copie-${i + 1}.pdf">Ouvrir le PDF</a>` : `<img src="${u}" alt="Page ${i + 1} de la copie">`;
       if (f.annot) v.insertAdjacentHTML('afterbegin', `<p class="small muted">Page annotée par le professeur${prof ? ' · <a href="#" id="orig">voir l\'original</a>' : ''}</p>`);
@@ -1014,7 +1027,8 @@
     const an = $('#c-annot'); if (an) an.addEventListener('click', () => annotModal(rid, i));
     $('#c-save').addEventListener('click', async () => {
       const b = $('#c-save'), er = $('#c-err'); b.disabled = true; er.hidden = true;
-      try { applyData(await call('corrigerRendu', { id: rid, note: $('#c-note').value, appreciation: $('#c-app').value.trim() })); toast('Correction enregistrée : l\'élève la voit dans son espace'); reRender(); copiesModal(r.docId); }
+      try { applyData(await call('corrigerRendu', { id: rid, note: $('#c-note').value, appreciation: $('#c-app').value.trim() })); toast('Correction enregistrée : l\'élève la voit dans son espace');
+        if (String(r.docId).indexOf('exo:') === 0) { closeModal(); if (location.hash === '#apprendre') SigmaLearn.render(); else reRender(); } else { reRender(); copiesModal(r.docId); } }
       catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = x.message; er.hidden = false; b.disabled = false; }
     });
   }
@@ -1888,7 +1902,7 @@
   }
   window.addEventListener('hashchange', route);
 
-  if (window.SigmaLearn) SigmaLearn.init({ S, mutate, isActive });
+  if (window.SigmaLearn) SigmaLearn.init({ openRendu: (id) => renduModal(id, 0), shrink, call, applyData, toast, expired,  S, mutate, isActive });
   async function boot() {
     if (window.SIGMA_PAGE && location.hash !== '#espace') { try { history.replaceState(null, '', '#espace'); } catch (_) { location.hash = '#espace'; } }
     route();
