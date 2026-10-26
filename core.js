@@ -183,7 +183,7 @@ var SigmaCore = (function () {
       return st.read('sessions').some(function (x) { return x.prof === me.nom && asList(x.classes).indexOf(s.classe) >= 0 && (!mat || x.matiere === mat) && asList(s.matieres).indexOf(x.matiere) >= 0; });
     }
     // Fiches d'exercices et évaluations (PDF) : fichier rangé par le store (Google Drive), fiche dans la table « docs »
-    var DOC_TYPES = ['Fiche d\'exercices', 'Évaluation', 'Corrigé', 'Cours'];
+    var DOC_TYPES = ['Fiche d\'exercices', 'Devoir à rendre', 'Évaluation', 'Corrigé', 'Cours'];
     function docsFor(sess, d) {
       var docs = st.read('docs').sort(function (a, b) { return String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)); });
       if (sess.role === 'admin' || sess.role === 'prof') return docs;
@@ -191,6 +191,25 @@ var SigmaCore = (function () {
       if (!s || !isActive(s)) return [];
       return docs.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && (!x.matiere || asList(s.matieres).indexOf(x.matiere) >= 0); });
     }
+    // Devoirs rendus en photos par les élèves : chacun voit les siens ; le prof, ceux de ses élèves dans sa matière
+    function rendusFor(sess, d) {
+      var rs = st.read('rendus'); if (sess.role === 'admin') return rs;
+      if (sess.role === 'eleve') return rs.filter(function (r) { return r.studentId === sess.id; });
+      var docs = st.read('docs');
+      return rs.filter(function (r) {
+        var s = d.students.filter(function (x) { return x.id === r.studentId; })[0], dc = docs.filter(function (x) { return x.id === r.docId; })[0];
+        return s && ((dc && dc.parId === sess.id) || teaches(sess, s, r.matiere));
+      });
+    }
+    function canRendu(sess, id) {
+      var r = find('rendus', id); if (!r) throw new Error('Copie introuvable.');
+      if (sess.role === 'admin') return r;
+      if (sess.role === 'eleve') { if (r.studentId !== sess.id) throw new Error('Accès refusé.'); return r; }
+      var s = find('students', r.studentId), dc = find('docs', r.docId);
+      if (!s || !((dc && dc.parId === sess.id) || teaches(sess, s, r.matiere))) throw new Error("Vous n'enseignez pas cette matière à cet élève.");
+      return r;
+    }
+    var RENDU_MIME = { '/9j/': ['image/jpeg', '.jpg'], 'iVBOR': ['image/png', '.png'], 'UklGR': ['image/webp', '.webp'], 'JVBER': ['application/pdf', '.pdf'] };
     // Évaluations en ligne : la correction est chiffrée dans le site ; la clé n'est donnée qu'après déblocage par l'admin
     function clesFor(sess, d, s) {
       var all = st.evalKeys || {}, out = {}, k;
@@ -234,7 +253,7 @@ var SigmaCore = (function () {
       if (sess.role === 'admin') {
         return { role: 'admin', me: { id: sess.id, nom: sess.nom }, settings: d.settings, sessions: d.sessions,
           teachers: d.teachers.map(function (t) { return strip('teachers', t); }), students: d.students.map(function (s) { return strip('students', s); }),
-          payments: d.payments, expenses: d.expenses, docs: docsFor(sess, d), cles: clesFor(sess, d), sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
+          payments: d.payments, expenses: d.expenses, docs: docsFor(sess, d), rendus: rendusFor(sess, d), cles: clesFor(sess, d), sheetUrl: st.sheetUrl ? st.sheetUrl() : '' };
       }
       if (sess.role === 'prof') {
         var me = d.teachers.filter(function (t) { return t.id === sess.id; })[0];
@@ -244,13 +263,13 @@ var SigmaCore = (function () {
           return s.statut !== 'abandon' && mine.some(function (x) { return asList(x.classes).indexOf(s.classe) >= 0 && asList(s.matieres).indexOf(x.matiere) >= 0; });
         }).map(function (s) { return { id: s.id, num: s.num, prenom: s.prenom, nom: s.nom, classe: s.classe, etablissement: s.etablissement, notesMaths: s.notesMaths, notesPC: s.notesPC, notesSVT: s.notesSVT, matieres: s.matieres, statut: s.statut, createdAt: s.createdAt, suivi: s.suivi || '' }; });
         return { role: 'prof', me: pubTeacher(me), settings: pubSettings(d.settings), sessions: d.sessions, teachers: d.teachers.map(pubTeacher), students: studs,
-          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d), docs: docsFor(sess, d), cles: clesFor(sess, d) };
+          finance: finance(d), byMonth: financeByMonth(d), alerts: alerts(d), docs: docsFor(sess, d), rendus: rendusFor(sess, d), cles: clesFor(sess, d) };
       }
       var s = d.students.filter(function (x) { return x.id === sess.id; })[0];
       if (!s) throw new Error('Compte introuvable.');
       var meS = strip('students', s); delete meS.codeConf; delete meS.essais;
       return { role: 'eleve', me: meS, settings: pubSettings(d.settings), sessions: d.sessions.filter(function (x) { return asList(x.classes).indexOf(s.classe) >= 0; }),
-        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }), docs: docsFor(sess, d), cles: clesFor(sess, d, s) };
+        teachers: d.teachers.map(pubTeacher), payments: d.payments.filter(function (p) { return p.studentId === s.id; }), docs: docsFor(sess, d), rendus: rendusFor(sess, d), cles: clesFor(sess, d, s) };
     }
 
     function onValidated(studentId) {
@@ -425,9 +444,11 @@ var SigmaCore = (function () {
           if (b64.length > 11 * 1024 * 1024) throw new Error('Fichier trop lourd (8 Mo maximum).');
           if (b64.slice(0, 6) !== 'JVBERi') throw new Error('Le fichier doit être un PDF.');
           var nom = clean(f.name, 80).replace(/[\\/:*?"<>|]+/g, '-') || (ti + '.pdf'); if (!/\.pdf$/i.test(nom)) nom += '.pdf';
-          var saved = st.saveFile(nom, b64);
+          var lim = /^\d{4}-\d{2}-\d{2}$/.test(String(dc.limite || '')) ? String(dc.limite) : '';
+          var saved = st.saveFile(nom, b64, 'application/pdf');
           var rec2 = { id: 'doc-' + st.uuid().replace(/-/g, '').slice(0, 10), titre: ti, type: ty, matiere: mt2, classes: cls, date: today(),
-            fichier: nom, fileId: saved.id, url: saved.url, taille: Math.round(b64.length * 0.75), par: sess.nom, parId: sess.id, note: clean(dc.note, 200) };
+            fichier: nom, fileId: saved.id, url: saved.url, taille: Math.round(b64.length * 0.75), par: sess.nom, parId: sess.id, note: clean(dc.note, 200),
+            aRendre: ty === 'Devoir à rendre' ? 'oui' : '', limite: ty === 'Devoir à rendre' ? lim : '' };
           st.upsert('docs', rec2);
           return dataFor(sess);
         }
@@ -437,6 +458,62 @@ var SigmaCore = (function () {
           if (sess.role !== 'admin' && dd.parId !== sess.id) throw new Error('Seul celui qui a publié ce document peut le retirer.');
           if (st.deleteFile && dd.fileId) { try { st.deleteFile(dd.fileId); } catch (e) { /* déjà supprimé */ } }
           st.remove('docs', dd.id);
+          return dataFor(sess);
+        }
+        case 'rendre': {
+          need(sess, ['eleve']);
+          if (!st.saveFile) throw new Error("Le serveur n'est pas à jour.");
+          var sr = find('students', sess.id); if (!sr || !isActive(sr)) throw new Error('Ton inscription doit être confirmée pour rendre un devoir.');
+          var dv = find('docs', req.docId); if (!dv || dv.aRendre !== 'oui') throw new Error('Devoir introuvable.');
+          if (asList(dv.classes).indexOf(sr.classe) < 0 || asList(sr.matieres).indexOf(dv.matiere) < 0) throw new Error("Ce devoir n'est pas pour ta classe.");
+          var old = st.read('rendus').filter(function (x) { return x.docId === dv.id && x.studentId === sr.id; })[0];
+          if (old && old.statut !== 'rendu') throw new Error('Ton devoir est déjà corrigé : tu ne peux plus le modifier.');
+          var fl = Array.isArray(req.files) ? req.files : [];
+          if (!fl.length) throw new Error('Ajoute au moins une photo de ta copie.');
+          if (fl.length > 8) throw new Error('8 photos au maximum.');
+          var tot = 0, parts = fl.map(function (x) {
+            var b = String((x && x.data) || '').replace(/^data:[^,]*,/, ''), mm = RENDU_MIME[b.slice(0, 5)] || RENDU_MIME[b.slice(0, 4)];
+            if (!mm) throw new Error('Envoie des photos (JPG, PNG) ou un PDF.');
+            tot += b.length; return { b: b, mm: mm };
+          });
+          if (tot > 14 * 1024 * 1024) throw new Error('Photos trop lourdes (10 Mo au total maximum).');
+          var base = (sr.num + '-' + sr.prenom + '-' + sr.nom + '-' + dv.titre).replace(/[\\/:*?"<>|]+/g, '-').slice(0, 90);
+          var files = parts.map(function (p, i) { var sv = st.saveFile(base + '-' + (i + 1) + p.mm[1], p.b, p.mm[0], 'rendus'); return { id: sv.id, url: sv.url, mime: p.mm[0] }; });
+          if (old && st.deleteFile) { try { JSON.parse(old.fichiers || '[]').forEach(function (f) { try { st.deleteFile(f.id); } catch (e) { } }); } catch (e) { } }
+          st.upsert('rendus', { id: old ? old.id : 'ren-' + st.uuid().replace(/-/g, '').slice(0, 10), docId: dv.id, studentId: sr.id, eleve: sr.prenom + ' ' + sr.nom, classe: sr.classe, matiere: dv.matiere,
+            titre: dv.titre, date: today(), retard: dv.limite && today() > dv.limite ? 'oui' : '', fichiers: JSON.stringify(files), commentaire: clean(req.commentaire, 300),
+            statut: 'rendu', note: '', appreciation: '', corrigePar: '', corrigeLe: '' });
+          return dataFor(sess);
+        }
+        case 'corrigerRendu': {
+          need(sess, ['prof', 'admin']);
+          var rr = canRendu(sess, req.id);
+          var nv = note(req.note), ap = clean(req.appreciation, 400);
+          if (nv === '' && ap.length < 2) throw new Error('Mettez une note ou une appréciation.');
+          rr.note = nv; rr.appreciation = ap; rr.statut = 'corrige'; rr.corrigePar = sess.nom; rr.corrigeLe = today();
+          st.upsert('rendus', rr);
+          return dataFor(sess);
+        }
+        case 'fichierRendu': {
+          // les copies ne sont pas publiques sur Drive : on les envoie seulement à l'élève et à ses profs
+          need(sess, ['eleve', 'prof', 'admin']);
+          var rf = canRendu(sess, req.id), lf = JSON.parse(rf.fichiers || '[]'), ff = lf[+req.i || 0];
+          if (!ff) throw new Error('Photo introuvable.');
+          var fid = req.annot && ff.annot ? ff.annot : ff.id;
+          return { data: st.readFile(fid), mime: req.annot && ff.annot ? 'image/jpeg' : ff.mime };
+        }
+        case 'annoterRendu': {
+          need(sess, ['prof', 'admin']);
+          var ra = canRendu(sess, req.id), la = JSON.parse(ra.fichiers || '[]'), ia = +req.i || 0;
+          if (!la[ia]) throw new Error('Photo introuvable.');
+          var ba = String(req.data || '').replace(/^data:[^,]*,/, '');
+          if (ba.slice(0, 4) !== '/9j/') throw new Error('Image annotée invalide.');
+          if (ba.length > 6 * 1024 * 1024) throw new Error('Image annotée trop lourde.');
+          var sa = st.saveFile((ra.eleve + '-' + ra.titre).replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80) + '-' + (ia + 1) + '-annote.jpg', ba, 'image/jpeg', 'rendus');
+          if (la[ia].annot && st.deleteFile) { try { st.deleteFile(la[ia].annot); } catch (e) { } }
+          la[ia].annot = sa.id; ra.fichiers = JSON.stringify(la);
+          if (ra.statut !== 'corrige') { ra.statut = 'annote'; }
+          st.upsert('rendus', ra);
           return dataFor(sess);
         }
         case 'delComment': {

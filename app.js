@@ -166,6 +166,7 @@
     if (d.alerts) S.alerts = d.alerts;
     if (d.sheetUrl) S.sheetUrl = d.sheetUrl;
     if (d.cles) S.cles = d.cles;
+    if (d.rendus) S.rendus = d.rendus.map(r => { let f = []; try { f = JSON.parse(r.fichiers || '[]'); } catch (e) { } return Object.assign({}, r, { fichiers: f }); });
     if (d.docs) S.docs = d.docs.map(x => Object.assign({}, x, { classes: asList(x.classes) }));
     if (d.role === 'eleve' && d.me) S.me = normStudent(d.me);
     S.updatedAt = new Date();
@@ -173,7 +174,7 @@
 
   /* ---------- mode démo : le « serveur » tourne dans ce navigateur ---------- */
   const DEMO_KEY = 'sigma-cap-demo-v2';
-  let demoDB = null, demoHandle = null;
+  let demoDB = null, demoHandle = null; const demoFiles = {};
   function demoSeed() {
     const st = clone(DEF.settings);
     const hash = p => C.sha256('demo|' + p);
@@ -226,9 +227,12 @@
       today, uuid: () => Array.from({ length: 4 }, () => Math.random().toString(16).slice(2, 10).padEnd(8, '0')).join('-'),
       masterCode: DEMO_MASTER, sheetUrl: () => '', evalKeys: window.SIGMA_DEMO_KEYS || {},
       // démo : le PDF reste dans ce navigateur le temps de la visite
-      saveFile(name, b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-        return { id: 'demo-' + Date.now(), url: URL.createObjectURL(new Blob([u], { type: 'application/pdf' })) }; },
-      deleteFile() { }
+      saveFile(name, b64, mime, kind) { const id = 'demo-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8); demoFiles[id] = b64;
+        if (kind === 'rendus') return { id, url: '' };
+        const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        return { id, url: URL.createObjectURL(new Blob([u], { type: mime || 'application/pdf' })) }; },
+      readFile(id) { if (!demoFiles[id]) throw new Error('Démo : photo effacée en rechargeant la page.'); return demoFiles[id]; },
+      deleteFile(id) { delete demoFiles[id]; }
     };
   }
   function demoCall(body) { if (!demoHandle) demoHandle = C.make(demoStore()); return demoHandle(body); }
@@ -835,8 +839,8 @@
   }
 
   /* ---------- fiches d'exercices et évaluations (PDF) ---------- */
-  const DOC_TYPES = ["Fiche d'exercices", 'Évaluation', 'Corrigé', 'Cours'];
-  const DOC_ICON = { "Fiche d'exercices": '📝', 'Évaluation': '🧪', 'Corrigé': '✅', 'Cours': '📘' };
+  const DOC_TYPES = ["Fiche d'exercices", 'Devoir à rendre', 'Évaluation', 'Corrigé', 'Cours'];
+  const DOC_ICON = { "Fiche d'exercices": '📝', 'Devoir à rendre': '📷', 'Évaluation': '🧪', 'Corrigé': '✅', 'Cours': '📘' };
   const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' Mo' : Math.max(1, Math.round(n / 1024)) + ' Ko';
   // documents intégrés au site (data.js) + documents déposés (serveur)
   const allDocs = () => [...(S.docs || []), ...(DEF.docs || []).map(x => Object.assign({}, x))];
@@ -845,7 +849,8 @@
       <div class="doc-b"><b>${esc(d.titre)}</b>
         <span class="doc-m"><span class="pill ${esc(d.matiere)}">${esc(d.matiere)}</span> <span class="pill neutral">${esc(d.type)}</span> ${d.classes.map(esc).join(', ')}</span>
         <span class="small muted">${esc(dateLabel(d.date))}${d.par ? ' · ' + esc(d.par) : ''}${d.fixe && S.role !== 'eleve' ? ' · intégré au site' : ''}${d.taille ? ' · ' + kb(+d.taille) : ''}</span>
-        ${d.note ? `<span class="small">${esc(d.note)}</span>` : ''}</div>
+        ${d.note ? `<span class="small">${esc(d.note)}</span>` : ''}
+        ${d.aRendre === 'oui' ? (S.role === 'eleve' ? renduEleveHTML(d) : renduProfHTML(d)) : ''}</div>
       <div class="doc-a"><a class="btn sm primary" href="${esc(d.url)}" target="_blank" rel="noopener">Ouvrir</a>${canDel ? `<button class="btn sm ghost" data-act="del-doc" data-id="${esc(d.id)}">Retirer</button>` : ''}</div></li>`;
   }
   function docsPane() {
@@ -873,8 +878,12 @@
       <label class="f">Matière<select id="d-mat">${myMats.map(m => `<option value="${esc(m)}">${MAT_LABEL[m] || esc(m)}</option>`).join('')}</select></label>
       <fieldset class="f" style="grid-column:1/-1;border:0;padding:0;margin:0"><span>Classes</span><div class="chips" style="margin-top:6px">${S.settings.classes.map(c => `<label class="chk"><input type="checkbox" name="d-cl" value="${esc(c)}" ${myClasses.length === 1 && myClasses[0] === c ? 'checked' : ''}> ${esc(c)}</label>`).join('')}</div></fieldset>
       <label class="f" style="grid-column:1/-1">Fichier PDF <span class="h">8 Mo maximum</span><input id="d-file" type="file" accept="application/pdf,.pdf"></label>
-      <label class="f" style="grid-column:1/-1">Consigne <span class="h">facultatif · ex. « À rendre samedi »</span><input id="d-note" maxlength="200"></label>
+      <label class="f" id="d-lim-l" hidden>Date limite de rendu<input id="d-lim" type="date"></label>
+      <p class="small muted" id="d-lim-h" hidden style="grid-column:1/-1;margin:0">Les élèves rendront leur copie en photos depuis leur espace ; vous pourrez l'annoter, la noter et la commenter.</p>
+      <label class="f" style="grid-column:1/-1">Consigne <span class="h">facultatif · ex. « Exercices 1 à 4 »</span><input id="d-note" maxlength="200"></label>
     </form><p class="err" id="d-err" hidden></p>`, `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="d-save">Publier</button>`);
+    const syncT = () => { const on = $('#d-type').value === 'Devoir à rendre'; $('#d-lim-l').hidden = $('#d-lim-h').hidden = !on; };
+    $('#d-type').addEventListener('change', syncT);
     $('#d-file').addEventListener('change', () => { const fi = $('#d-file').files[0]; if (fi && !$('#d-titre').value.trim()) $('#d-titre').value = fi.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').slice(0, 90); });
     $('#d-save').addEventListener('click', async () => {
       const er = $('#d-err'), bad = m => { er.textContent = m; er.hidden = false; };
@@ -887,13 +896,183 @@
       const b = $('#d-save'); b.disabled = true; b.textContent = 'Envoi en cours…'; er.hidden = true;
       try {
         const data = await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => ko(new Error('Lecture du fichier impossible.')); r.readAsDataURL(fi); });
-        applyData(await call('addDoc', { doc: { titre, type: $('#d-type').value, matiere: $('#d-mat').value, classes, note: $('#d-note').value.trim() }, file: { name: fi.name, data } }));
+        applyData(await call('addDoc', { doc: { titre, type: $('#d-type').value, matiere: $('#d-mat').value, classes, note: $('#d-note').value.trim(), limite: $('#d-lim').value }, file: { name: fi.name, data } }));
         closeModal(); toast('Document publié'); S.role === 'admin' ? renderAdmin() : renderProf();
       } catch (x) {
         if (/Session expirée/.test(x.message)) return expired();
         bad(/Accès refusé|Action inconnue/.test(x.message) ? "Le serveur n'est pas encore à jour pour les documents : collez le nouveau Code.gs puis déployez une nouvelle version." : x.message);
         b.disabled = false; b.textContent = 'Publier';
       }
+    });
+  }
+
+  /* ---------- devoirs à rendre : l'élève envoie des photos, le prof annote, note et commente ---------- */
+  const reRender = () => S.role === 'admin' ? renderAdmin() : S.role === 'prof' ? renderProf() : renderEleve();
+  const renduOf = (docId, sid) => (S.rendus || []).find(r => r.docId === docId && r.studentId === sid);
+  const R_STAT = { rendu: ['Rendu · à corriger', 'warn'], annote: ['Copie annotée', 'neutral'], corrige: ['Corrigé', 'ok'] };
+  function limiteHTML(d) {
+    if (!d.limite) return '';
+    const late = today() > d.limite;
+    return `<span class="small ${late ? 'bad-t' : ''}">À rendre avant le ${esc(dateLabel(d.limite))}${late ? ' (date dépassée)' : ''}</span>`;
+  }
+  function renduEleveHTML(d) {
+    const r = renduOf(d.id, S.me.id);
+    if (!r) return `<div class="rendu-box">${limiteHTML(d)}<button class="btn sm primary" data-act="rendre" data-id="${esc(d.id)}">📷 Rendre ma copie (photos)</button></div>`;
+    const st = R_STAT[r.statut] || R_STAT.rendu;
+    return `<div class="rendu-box"><span class="pill ${st[1]}">${st[0]}</span> <span class="small muted">rendu le ${esc(dateLabel(r.date))}${r.retard ? ' · en retard' : ''} · ${r.fichiers.length} photo${r.fichiers.length > 1 ? 's' : ''}</span>
+      ${r.statut === 'corrige' ? `<div class="rendu-res">${r.note !== '' ? `<b class="rendu-note">${esc(String(r.note).replace('.', ','))}/20</b>` : ''}${r.appreciation ? `<p>${esc(r.appreciation)}</p>` : ''}<span class="small muted">${esc(r.corrigePar)} · ${esc(dateLabel(r.corrigeLe))}</span></div>` : ''}
+      <div class="rendu-a"><button class="btn sm" data-act="voir-rendu" data-id="${esc(r.id)}">${r.fichiers.some(f => f.annot) ? 'Voir ma copie annotée' : 'Voir ma copie'}</button>${r.statut === 'rendu' ? `<button class="btn sm ghost" data-act="rendre" data-id="${esc(d.id)}">Remplacer mes photos</button>` : ''}</div></div>`;
+  }
+  function renduProfHTML(d) {
+    const att = S.students.filter(s => isActive(s) && d.classes.includes(s.classe) && asList(s.matieres).includes(d.matiere));
+    const rs = (S.rendus || []).filter(r => r.docId === d.id), aCor = rs.filter(r => r.statut !== 'corrige').length;
+    return `<div class="rendu-box">${limiteHTML(d)}<button class="btn sm" data-act="copies" data-id="${esc(d.id)}">Copies rendues : ${rs.length}/${att.length}${aCor ? ` · ${aCor} à corriger` : ''}</button></div>`;
+  }
+  // photos réduites (1600 px, JPEG) pour un envoi rapide même en 3G
+  function shrink(file) {
+    return new Promise((ok, ko) => {
+      const rd = new FileReader();
+      rd.onerror = () => ko(new Error('Lecture de la photo impossible.'));
+      rd.onload = () => {
+        const url = String(rd.result);
+        if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return ok(url);
+        const im = new Image();
+        im.onerror = () => ko(new Error('« ' + file.name + ' » n\'est pas une photo lisible (prends-la en JPG).'));
+        im.onload = () => {
+          const k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+          c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+          const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+          ok(c.toDataURL('image/jpeg', 0.72));
+        };
+        im.src = url;
+      };
+      rd.readAsDataURL(file);
+    });
+  }
+  function rendreModal(docId) {
+    const d = allDocs().find(x => x.id === docId); if (!d) return;
+    let files = [];
+    openModal('Rendre : ' + d.titre, `<p class="small muted" style="margin-top:0">Prends ta copie en photo, page par page, bien à plat et à la lumière. 8 photos maximum.</p>
+      <label class="f">Photos de ta copie<input id="r-files" type="file" accept="image/*,application/pdf" multiple></label>
+      <div id="r-prev" class="rendu-prev"></div>
+      <label class="f">Message au professeur <span class="h">facultatif</span><input id="r-com" maxlength="300"></label><p class="err" id="r-err" hidden></p>`,
+      `<button class="btn" data-act="close">Annuler</button><button class="btn primary" id="r-send">Envoyer ma copie</button>`);
+    const er = $('#r-err'), bad = m => { er.textContent = m; er.hidden = false; };
+    $('#r-files').addEventListener('change', async e => {
+      er.hidden = true;
+      try {
+        for (const f of e.target.files) { if (files.length >= 8) { bad('8 photos au maximum.'); break; } files.push(await shrink(f)); }
+      } catch (x) { bad(x.message); }
+      e.target.value = '';
+      $('#r-prev').innerHTML = files.map((u, i) => `<figure>${/^data:application\/pdf/.test(u) ? '<span class="rendu-pdf">PDF</span>' : `<img src="${u}" alt="Page ${i + 1}">`}<button type="button" class="btn sm ghost" data-rm="${i}" aria-label="Retirer la page ${i + 1}">✕</button><figcaption>Page ${i + 1}</figcaption></figure>`).join('');
+    });
+    $('#r-prev').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; files.splice(+b.dataset.rm, 1); b.closest('figure').remove(); $('#r-prev').querySelectorAll('figcaption').forEach((c, i) => { c.textContent = 'Page ' + (i + 1); c.parentNode.querySelector('[data-rm]').dataset.rm = i; }); });
+    $('#r-send').addEventListener('click', async () => {
+      if (!files.length) return bad('Ajoute au moins une photo de ta copie.');
+      const b = $('#r-send'); b.disabled = true; b.textContent = 'Envoi en cours…'; er.hidden = true;
+      try { applyData(await call('rendre', { docId, files: files.map(data => ({ data })), commentaire: $('#r-com').value.trim() })); closeModal(); toast('Copie envoyée à ton professeur'); reRender(); }
+      catch (x) { if (/Session expirée/.test(x.message)) return expired(); bad(/Action inconnue/.test(x.message) ? "Le serveur n'est pas encore à jour : réessaie plus tard." : x.message); b.disabled = false; b.textContent = 'Envoyer ma copie'; }
+    });
+  }
+  const fileCache = {};
+  async function loadPhoto(rid, i, annot) {
+    const k = rid + '|' + i + '|' + (annot ? 1 : 0) + '|' + JSON.stringify(((S.rendus || []).find(r => r.id === rid) || {}).fichiers || []);
+    if (!fileCache[k]) fileCache[k] = call('fichierRendu', { id: rid, i, annot }).then(r => 'data:' + r.mime + ';base64,' + r.data).catch(e => { delete fileCache[k]; throw e; });
+    return fileCache[k];
+  }
+  function copiesModal(docId) {
+    const d = allDocs().find(x => x.id === docId); if (!d) return;
+    const att = S.students.filter(s => isActive(s) && d.classes.includes(s.classe) && asList(s.matieres).includes(d.matiere));
+    const rs = (S.rendus || []).filter(r => r.docId === d.id);
+    const extra = rs.filter(r => !att.some(s => s.id === r.studentId)).map(r => ({ id: r.studentId, prenom: r.eleve, nom: '', classe: r.classe }));
+    const rows = [...att, ...extra].map(s => { const r = rs.find(x => x.studentId === s.id); const st = r && (R_STAT[r.statut] || R_STAT.rendu);
+      return `<tr><td><b>${esc(s.prenom + ' ' + (s.nom || ''))}</b><br><span class="small muted">${esc(s.classe)}</span></td>
+        <td>${r ? `<span class="pill ${st[1]}">${st[0]}</span><br><span class="small muted">${esc(dateLabel(r.date))}${r.retard ? ' · en retard' : ''}</span>` : '<span class="small muted">Pas encore rendu</span>'}</td>
+        <td>${r && r.note !== '' ? `<b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}</td>
+        <td>${r ? `<button class="btn sm primary" data-act="corriger" data-id="${esc(r.id)}">${r.statut === 'corrige' ? 'Revoir' : 'Corriger'}</button>` : ''}</td></tr>`; }).join('');
+    openModal('Copies : ' + d.titre, `<div class="tbl-wrap"><table><thead><tr><th>Élève</th><th>État</th><th>Note</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="muted">Aucun élève inscrit dans cette classe et cette matière.</td></tr>'}</tbody></table></div>`, `<button class="btn" data-act="close">Fermer</button>`);
+  }
+  // visionneuse (élève) et correction (prof) : une page à la fois
+  function renduModal(rid, page) {
+    const r = (S.rendus || []).find(x => x.id === rid); if (!r) return;
+    const prof = S.role !== 'eleve', n = r.fichiers.length, i = Math.max(0, Math.min(n - 1, page || 0)), f = r.fichiers[i];
+    const nav = n > 1 ? `<div class="rendu-nav">${r.fichiers.map((x, j) => `<button class="btn sm ${j === i ? 'primary' : ''}" data-pg="${j}">Page ${j + 1}${x.annot ? ' ✎' : ''}</button>`).join('')}</div>` : '';
+    const form = prof ? `<div class="grid2 rendu-form"><label class="f">Note /20 <span class="h">facultatif</span><input id="c-note" inputmode="decimal" value="${esc(String(r.note || '').replace('.', ','))}"></label>
+        <label class="f" style="grid-column:1/-1">Appréciation<textarea id="c-app" rows="2" maxlength="400">${esc(r.appreciation || '')}</textarea></label></div><p class="err" id="c-err" hidden></p>` : '';
+    openModal((prof ? r.eleve + ' · ' : '') + r.titre, `${r.commentaire ? `<p class="small"><b>Message de l'élève :</b> ${esc(r.commentaire)}</p>` : ''}${nav}
+      <div class="rendu-view" id="rv"><p class="muted">Chargement de la page…</p></div>${form}`,
+      prof ? `<button class="btn" data-act="close">Fermer</button>${f.mime !== 'application/pdf' ? `<button class="btn" id="c-annot">✎ Annoter cette page</button>` : ''}<button class="btn primary" id="c-save">Enregistrer la correction</button>` : `<button class="btn" data-act="close">Fermer</button>`);
+    $('#modal-root .modal').classList.add('wide');
+    $('#modal-root').querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => renduModal(rid, +b.dataset.pg)));
+    loadPhoto(rid, i, !!f.annot).then(u => {
+      const v = $('#rv'); if (!v) return;
+      v.innerHTML = f.mime === 'application/pdf' && !f.annot ? `<a class="btn primary" href="${u}" download="copie-${i + 1}.pdf">Ouvrir le PDF</a>` : `<img src="${u}" alt="Page ${i + 1} de la copie">`;
+      if (f.annot) v.insertAdjacentHTML('afterbegin', `<p class="small muted">Page annotée par le professeur${prof ? ' · <a href="#" id="orig">voir l\'original</a>' : ''}</p>`);
+      const o = $('#orig'); if (o) o.addEventListener('click', e => { e.preventDefault(); loadPhoto(rid, i, false).then(u2 => { v.querySelector('img').src = u2; o.remove(); }); });
+    }).catch(x => { const v = $('#rv'); if (v) v.innerHTML = `<p class="err">${esc(x.message)}</p>`; });
+    if (!prof) return;
+    const an = $('#c-annot'); if (an) an.addEventListener('click', () => annotModal(rid, i));
+    $('#c-save').addEventListener('click', async () => {
+      const b = $('#c-save'), er = $('#c-err'); b.disabled = true; er.hidden = true;
+      try { applyData(await call('corrigerRendu', { id: rid, note: $('#c-note').value, appreciation: $('#c-app').value.trim() })); toast('Correction enregistrée : l\'élève la voit dans son espace'); reRender(); copiesModal(r.docId); }
+      catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = x.message; er.hidden = false; b.disabled = false; }
+    });
+  }
+  // annotation : stylo (rouge, vert, bleu), texte, annuler ; enregistrée en image à côté de l'original
+  function annotModal(rid, i) {
+    const r = (S.rendus || []).find(x => x.id === rid); if (!r) return;
+    const f = r.fichiers[i];
+    openModal('Annoter · page ' + (i + 1), `<div class="annot-bar" role="toolbar" aria-label="Outils">
+        <button class="btn sm primary" data-tool="pen" data-col="#d61f1f">✎ Rouge</button><button class="btn sm" data-tool="pen" data-col="#14883e">✎ Vert</button><button class="btn sm" data-tool="pen" data-col="#1b4fd6">✎ Bleu</button>
+        <button class="btn sm" data-tool="text" data-col="#d61f1f">T Texte</button><button class="btn sm" data-tool="tick">✓</button><button class="btn sm" data-tool="cross">✗</button>
+        <label class="small">Épaisseur <select id="a-w"><option value="1">fine</option><option value="2" selected>moyenne</option><option value="4">épaisse</option></select></label>
+        <button class="btn sm ghost" id="a-undo">↶ Annuler</button></div>
+      <div class="annot-wrap"><canvas id="a-cv" aria-label="Copie à annoter"></canvas></div><p class="small muted">Dessinez avec le doigt ou la souris. « Texte » : touchez l'endroit puis écrivez.</p><p class="err" id="a-err" hidden></p>`,
+      `<button class="btn" id="a-back">Retour</button><button class="btn primary" id="a-save" disabled>Enregistrer l'annotation</button>`);
+    $('#modal-root .modal').classList.add('wide');
+    const cv = $('#a-cv'), g = cv.getContext('2d'), ops = []; let base = null, tool = 'pen', col = '#d61f1f', cur = null;
+    const W = () => +$('#a-w').value * Math.max(2, cv.width / 320);
+    function draw() {
+      g.drawImage(base, 0, 0, cv.width, cv.height);
+      ops.forEach(o => {
+        g.strokeStyle = g.fillStyle = o.col; g.lineWidth = o.w; g.lineCap = g.lineJoin = 'round';
+        if (o.t === 'pen') { g.beginPath(); o.pts.forEach((p, k) => k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); if (o.pts.length === 1) g.lineTo(o.pts[0][0] + .1, o.pts[0][1]); g.stroke(); }
+        else if (o.t === 'text') { g.font = `bold ${Math.round(o.w * 9)}px sans-serif`; String(o.txt).split('\n').forEach((l, k) => g.fillText(l, o.x, o.y + k * o.w * 11)); }
+        else { const s = o.w * 9; g.lineWidth = o.w * 1.6; g.beginPath(); if (o.t === 'tick') { g.moveTo(o.x - s, o.y); g.lineTo(o.x - s / 3, o.y + s * .7); g.lineTo(o.x + s, o.y - s * .8); } else { g.moveTo(o.x - s * .7, o.y - s * .7); g.lineTo(o.x + s * .7, o.y + s * .7); g.moveTo(o.x + s * .7, o.y - s * .7); g.lineTo(o.x - s * .7, o.y + s * .7); } g.stroke(); }
+      });
+      $('#a-save').disabled = !ops.length;
+    }
+    const pos = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * cv.width / b.width, (e.clientY - b.top) * cv.height / b.height]; };
+    $('#modal-root').querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
+      tool = b.dataset.tool; if (b.dataset.col) col = b.dataset.col;
+      $('#modal-root').querySelectorAll('[data-tool]').forEach(x => x.classList.toggle('primary', x === b));
+    }));
+    cv.addEventListener('pointerdown', e => {
+      if (!base) return; e.preventDefault(); const p = pos(e);
+      if (tool === 'pen') { cur = { t: 'pen', col, w: W(), pts: [p] }; ops.push(cur); cv.setPointerCapture(e.pointerId); draw(); return; }
+      if (tool === 'text') { textAt(p); return; }
+      ops.push({ t: tool, col: tool === 'tick' ? '#14883e' : '#d61f1f', w: W(), x: p[0], y: p[1] }); draw();
+    });
+    cv.addEventListener('pointermove', e => { if (!cur) return; e.preventDefault(); cur.pts.push(pos(e)); draw(); });
+    const up = () => { cur = null; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    // zone de saisie posée sur la copie (pas de fenêtre « prompt », qui bloque certains téléphones)
+    function textAt(p) {
+      const wrap = $('#modal-root .annot-wrap'), b = cv.getBoundingClientRect(), wb = wrap.getBoundingClientRect();
+      const ta = document.createElement('textarea'); ta.className = 'annot-txt'; ta.rows = 2; ta.style.color = col;
+      ta.style.left = (b.left - wb.left + wrap.scrollLeft + p[0] * b.width / cv.width) + 'px'; ta.style.top = (b.top - wb.top + wrap.scrollTop + p[1] * b.height / cv.height - 12) + 'px';
+      wrap.appendChild(ta); ta.focus();
+      const fin = () => { const v = ta.value.trim(); ta.remove(); if (v) { const w = W(); ops.push({ t: 'text', col, w, x: p[0], y: p[1] + w * 4, txt: v }); draw(); } };
+      ta.addEventListener('blur', fin); ta.addEventListener('keydown', e => { if (e.key === 'Escape') { ta.value = ''; ta.blur(); } });
+    }
+    $('#a-undo').addEventListener('click', () => { ops.pop(); if (base) draw(); });
+    $('#a-back').addEventListener('click', () => renduModal(rid, i));
+    // on annote par-dessus la dernière version (annotée si elle existe déjà)
+    loadPhoto(rid, i, !!f.annot).then(u => { const im = new Image(); im.onload = () => { base = im; const k = Math.min(1, 1600 / Math.max(im.width, im.height)); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); draw(); }; im.src = u; })
+      .catch(x => { const er = $('#a-err'); er.textContent = x.message; er.hidden = false; });
+    $('#a-save').addEventListener('click', async () => {
+      const b = $('#a-save'), er = $('#a-err'); b.disabled = true; b.textContent = 'Enregistrement…'; er.hidden = true;
+      try { applyData(await call('annoterRendu', { id: rid, i, data: cv.toDataURL('image/jpeg', 0.8) })); toast('Annotation enregistrée'); renduModal(rid, i); }
+      catch (x) { if (/Session expirée/.test(x.message)) return expired(); er.textContent = x.message; er.hidden = false; b.disabled = false; b.textContent = "Enregistrer l'annotation"; }
     });
   }
 
@@ -1612,6 +1791,9 @@
       case 'close': closeModal(); break;
       case 'declare': declareModal(); break;
       case 'add-doc': addDocModal(); break;
+      case 'rendre': rendreModal(id); break;
+      case 'voir-rendu': case 'corriger': renduModal(id, 0); break;
+      case 'copies': copiesModal(id); break;
       case 'del-doc': confirmThen(el, 'Confirmer ?', async () => { if (await mutate('delDoc', { id }, 'Document retiré')) S.role === 'admin' ? renderAdmin() : renderProf(); }); break;
       case 'new-student': studentModal(); break;
       case 'edit-student': studentModal(id); break;

@@ -497,3 +497,24 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .lr-prog i { display: block; height: 100%; background: var(--lime); }
 .lr-demo { border-left: 5px solid #6c3fb5; }
 .pill.lr-dp { background: #6c3fb5; color: #fff; }
+
+/* devoirs à rendre en photos, annotation des copies */
+.modal.wide { width: min(980px, 100%); }
+.rendu-box { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.rendu-res { flex-basis: 100%; display: grid; gap: 2px; }
+.rendu-res p { margin: 0; }
+.rendu-note { font-size: 1.25rem; color: var(--ok); }
+.rendu-a { display: flex; flex-wrap: wrap; gap: 6px; }
+.bad-t { color: var(--bad); font-weight: 700; }
+.rendu-prev { display: flex; flex-wrap: wrap; gap: 8px; }
+.rendu-prev figure { margin: 0; position: relative; width: 92px; text-align: center; }
+.rendu-prev img, .rendu-pdf { width: 92px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; background: var(--surface-2); }
+.rendu-prev figure button { position: absolute; top: 2px; right: 2px; padding: 2px 6px; background: var(--surface); }
+.rendu-prev figcaption { font-size: .75rem; color: var(--muted); }
+.rendu-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.rendu-view { min-height: 120px; }
+.rendu-view img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+.annot-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; position: sticky; top: -22px; z-index: 2; background: var(--surface); padding: 6px 0; }
+.annot-wrap { position: relative; overflow: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.annot-wrap canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+.annot-txt { position: absolute; min-width: 160px; font: 700 15px/1.3 sans-serif; background: rgba(255,255,255,.92); border: 1px dashed currentColor; border-radius: 4px; padding: 2px 4px; z-index: 3; }
