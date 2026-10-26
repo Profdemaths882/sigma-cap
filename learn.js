@@ -4,7 +4,7 @@
 window.SigmaLearn = (function () {
   'use strict';
   const DISPO = ['2nde S'];                       // classes dont le contenu est prêt
-  const VERSION = '202610262010';
+  const VERSION = '202610262019';
   let ctx = null;
   const L = { classe: '', chap: 0, tab: 'cours', evalOpen: {}, evalShow: {}, plain: {} };
 
@@ -165,7 +165,11 @@ window.SigmaLearn = (function () {
   const SYM = ['√', '²', '³', 'π', '≤', '≥', '≠', '∈', '∉', '∞', '⇒', '⇔', '∪', '∩', '∅', '→', '×', '÷', '±', '|x|', '≈', '°'];
   if (!L.photos) L.photos = {};
   function redHTML(e) {
-    if (ctx.S.role !== 'eleve') return '';
+    if (ctx.S.role !== 'eleve') return `<details class="lr-red"><summary>✍️ Ma rédaction <span class="pill neutral">aperçu professeur</span></summary>
+      <p class="small muted" style="margin:0">Ici, l'élève écrit sa solution (avec les touches √ ² π ≤ ⇒ ⇔…) et/ou photographie son cahier, puis clique sur « Envoyer à mon prof ». Vous retrouvez les envois dans votre espace : onglet « Cours en ligne » → « Rédactions des élèves », pour annoter, noter et commenter.</p>
+      <div class="lr-sym">${SYM.slice(0, 12).map(x => `<button type="button" class="btn sm" disabled>${esc(x)}</button>`).join('')}</div>
+      <textarea class="lr-txt" rows="3" disabled placeholder="Zone de rédaction de l'élève…"></textarea>
+      <div class="toolbar"><button type="button" class="btn sm" disabled>📷 Photographier mon cahier</button><button type="button" class="btn sm primary" disabled>Envoyer à mon prof</button></div></details>`;
     const r = renduOf(e), st = r && (R_ST[r.statut] || R_ST.rendu), open = L.redOpen === e.id, ph = L.photos[e.id] || [];
     const locked = r && r.statut !== 'rendu';
     return `<details class="lr-red" data-x="${esc(e.id)}" ${open ? 'open' : ''}><summary>✍️ Ma rédaction${st ? ` <span class="pill ${st[1]}">${st[0]}</span>${r.note !== '' && r.statut === 'corrige' ? ` <b>${esc(String(r.note).replace('.', ','))}/20</b>` : ''}` : ''}</summary>
