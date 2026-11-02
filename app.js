@@ -555,7 +555,7 @@
         cards.push(`<div class="price best"><span class="pill ${m} tag">Pack + ${m}</span><h3>${names(pk.concat([m]))}</h3><div class="amt">${fcfa(tot)}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">${m} en plus du pack : + ${fcfa(tot - t.pack.prix)} seulement.</p></div>`); });
     }
     MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(`<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
-    return cards.join('') + `<p class="small muted price-note">Frais d'inscription : le montant d'une mensualité, payés une seule fois à l'inscription.${['1ère S2', 'Terminale S2'].includes(classe) ? ' <a href="img/flyer/tarifs-1ereS2-TS2.png" download="Sigma-Cap-Tarifs-1ereS2-TerminaleS2.png">Télécharger le flyer des tarifs</a>' : ''}</p>`;
+    return cards.join('') + `<p class="price-note"><b>⚠ Inscription = même prix que la mensualité</b> (payée une seule fois). Exemple : ${t.pack ? esc(t.pack.matieres.join(' + ')) + ' → ' + fcfa(t.pack.prix) + ' d\'inscription, puis ' + fcfa(t.pack.prix) + ' par mois' : 'une matière → même montant à l\'inscription puis chaque mois'}.${['1ère S2', 'Terminale S2'].includes(classe) ? ' <a href="img/flyer/tarifs-1ereS2-TS2.png" download="Sigma-Cap-Tarifs-1ereS2-TerminaleS2.png">Télécharger le flyer des tarifs</a>' : ''}</p>`;
   }
 
   function weekHTML(sessions, editable, highlight) {
