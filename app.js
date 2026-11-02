@@ -544,7 +544,7 @@
     if (st.inscriptionsOuvertes) bindRegForm();
   }
 
-  const FLYERS = { '1ère S2': 'tarifs-1ereS2-TS2.png', 'Terminale S2': 'tarifs-1ereS2-TS2.png', '1ère S1': 'tarifs-1ereS1.png', 'Terminale S1': 'tarifs-TS1.png' };
+  const FLYER = 'tarifs-2026-2027.png';
   function priceCards(classe) {
     const t = S.settings.tarifs[classe]; if (!t) return '';
     const cards = [], pk = t.pack ? t.pack.matieres : [], names = ms => ms.map(m => MAT_LABEL[m] || m).join(' + ');
@@ -556,7 +556,7 @@
         cards.push(`<div class="price best"><span class="pill ${m} tag">Pack + ${m}</span><h3>${names(pk.concat([m]))}</h3><div class="amt">${fcfa(tot)}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">${m} en plus du pack : + ${fcfa(tot - t.pack.prix)} seulement.</p></div>`); });
     }
     MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(`<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
-    return cards.join('') + `<p class="price-note"><b>⚠ Inscription = même prix que la mensualité</b> (payée une seule fois). Exemple : ${t.pack ? esc(t.pack.matieres.join(' + ')) + ' → ' + fcfa(t.pack.prix) + ' d\'inscription, puis ' + fcfa(t.pack.prix) + ' par mois' : 'une matière → même montant à l\'inscription puis chaque mois'}.${FLYERS[classe] ? ` <a href="img/flyer/${FLYERS[classe]}" download="Sigma-Cap-${FLYERS[classe]}">Télécharger le flyer des tarifs</a>` : ''}</p>`;
+    return cards.join('') + `<p class="price-note"><b>⚠ Inscription = même prix que la mensualité</b> (payée une seule fois). Exemple : ${t.pack ? esc(t.pack.matieres.join(' + ')) + ' → ' + fcfa(t.pack.prix) + ' d\'inscription, puis ' + fcfa(t.pack.prix) + ' par mois' : 'une matière → même montant à l\'inscription puis chaque mois'}. <a href="img/flyer/${FLYER}" download="Sigma-Cap-${FLYER}">Télécharger le flyer des tarifs (toutes les classes)</a></p>`;
   }
 
   function weekHTML(sessions, editable, highlight) {
