@@ -17,7 +17,7 @@ window.SIGMA_DEFAULTS = {
     classes: ["2nde S", "1ère S1", "1ère S2", "Terminale S1", "Terminale S2"],
     tarifs: {
       "2nde S":       { seules: { Maths: 10000, PC: 10000 },            pack: { matieres: ["Maths", "PC"], prix: 15000 } },
-      "1ère S1":      { seules: { Maths: 12000, PC: 12000, SVT: 5000 },            pack: { matieres: ["Maths", "PC"], prix: 20000 } },
+      "1ère S1":      { seules: { Maths: 12000, PC: 12000 },            pack: { matieres: ["Maths", "PC"], prix: 20000 } },
       "1ère S2":      { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ["Maths", "PC"], prix: 15000 }, option: { SVT: 5000 } },
       "Terminale S1": { seules: { Maths: 15000, PC: 15000 },            pack: { matieres: ["Maths", "PC"], prix: 30000 } },
       "Terminale S2": { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ["Maths", "PC"], prix: 15000 }, option: { SVT: 5000 } }

@@ -373,23 +373,23 @@
 
   /* Note d'information affichée à l'accueil (élèves et parents) — jusqu'à NOTE.fin */
   const NOTE = { id: 'svt-1ere', date: '2026-10-19', debut: '2026-10-31', fin: '2026-11-30', option: 5000,
-    classes: ['1ère S1', '1ère S2'],
+    classes: ['1ère S2'],
     edt: [['Mercredi', '15h – 18h', 'Physique-Chimie', 'M. Sène'],
           ['Samedi', '13h – 16h30', 'Mathématiques', 'M. Racine Thiam'],
           ['Samedi', '16h30 – 18h30', 'SVT (option)', 'Professeur de SVT']] };
   const noteOn = () => today() <= NOTE.fin;
   const notePrix = () => NOTE.classes.map(c => { const t = S.settings.tarifs[c]; const p = t && t.pack ? +t.pack.prix || 0 : 0;
     return { c, pack: p, svt: t && t.seules && t.seules.SVT != null ? C.addPrice(t, 'SVT') : NOTE.option }; });
-  const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S1 et la 1ère S2.\n🚀 Début des cours de SVT : ${dayName(NOTE.debut).toLowerCase()} ${dateLabel(NOTE.debut)}.\n\n🗓️ Emploi du temps 1ère S1 et 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
+  const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S2.\n🚀 Début des cours de SVT : ${dayName(NOTE.debut).toLowerCase()} ${dateLabel(NOTE.debut)}.\n\n🗓️ Emploi du temps 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
   function noteHTML(inSpace) {
     if (!noteOn()) return '';
     const card = `<article class="info-card">
         <p class="eyebrow">Note aux élèves et aux parents · ${esc(dateLabel(NOTE.date))}</p>
-        <h2>Nouveau : la <span class="pill SVT">SVT</span> en option pour la 1ère S1 et la 1ère S2</h2>
-        <p>Chers élèves, chers parents, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour les classes de Première S1 et S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
+        <h2>Nouveau : la <span class="pill SVT">SVT</span> en option pour la 1ère S2</h2>
+        <p>Chers élèves, chers parents, Sigma Cap ouvre un cours de <b>Sciences de la Vie et de la Terre</b> pour la classe de Première S2. La SVT est <b>au choix</b> : elle s'ajoute au pack Maths + PC.</p>
         <p class="note-start">🚀 Début des cours de SVT : <b>${esc(dayName(NOTE.debut).toLowerCase() + ' ' + dateLabel(NOTE.debut))}</b> à 16h30</p>
         <div class="note-grid">
-          <div><h3>Emploi du temps · 1ère S1 et 1ère S2</h3>
+          <div><h3>Emploi du temps · 1ère S2</h3>
             <table class="note-edt"><tbody>${NOTE.edt.map(r => `<tr${/SVT/.test(r[2]) ? ' class="hl"' : ''}><th>${r[0]}</th><td class="num">${r[1]}</td><td><b>${r[2]}</b><small>${esc(r[3])}</small></td></tr>`).join('')}</tbody></table>
             <p class="small muted">Le cours de Maths du samedi se termine désormais à 16h30.</p></div>
           <div><h3>Tarif de l'option</h3>
@@ -544,6 +544,7 @@
     if (st.inscriptionsOuvertes) bindRegForm();
   }
 
+  const FLYERS = { '1ère S2': 'tarifs-1ereS2-TS2.png', 'Terminale S2': 'tarifs-1ereS2-TS2.png', '1ère S1': 'tarifs-1ereS1.png', 'Terminale S1': 'tarifs-TS1.png' };
   function priceCards(classe) {
     const t = S.settings.tarifs[classe]; if (!t) return '';
     const cards = [], pk = t.pack ? t.pack.matieres : [], names = ms => ms.map(m => MAT_LABEL[m] || m).join(' + ');
@@ -555,7 +556,7 @@
         cards.push(`<div class="price best"><span class="pill ${m} tag">Pack + ${m}</span><h3>${names(pk.concat([m]))}</h3><div class="amt">${fcfa(tot)}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">${m} en plus du pack : + ${fcfa(tot - t.pack.prix)} seulement.</p></div>`); });
     }
     MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(`<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
-    return cards.join('') + `<p class="price-note"><b>⚠ Inscription = même prix que la mensualité</b> (payée une seule fois). Exemple : ${t.pack ? esc(t.pack.matieres.join(' + ')) + ' → ' + fcfa(t.pack.prix) + ' d\'inscription, puis ' + fcfa(t.pack.prix) + ' par mois' : 'une matière → même montant à l\'inscription puis chaque mois'}.${['1ère S2', 'Terminale S2'].includes(classe) ? ' <a href="img/flyer/tarifs-1ereS2-TS2.png" download="Sigma-Cap-Tarifs-1ereS2-TerminaleS2.png">Télécharger le flyer des tarifs</a>' : ''}</p>`;
+    return cards.join('') + `<p class="price-note"><b>⚠ Inscription = même prix que la mensualité</b> (payée une seule fois). Exemple : ${t.pack ? esc(t.pack.matieres.join(' + ')) + ' → ' + fcfa(t.pack.prix) + ' d\'inscription, puis ' + fcfa(t.pack.prix) + ' par mois' : 'une matière → même montant à l\'inscription puis chaque mois'}.${FLYERS[classe] ? ` <a href="img/flyer/${FLYERS[classe]}" download="Sigma-Cap-${FLYERS[classe]}">Télécharger le flyer des tarifs</a>` : ''}</p>`;
   }
 
   function weekHTML(sessions, editable, highlight) {
@@ -1234,13 +1235,16 @@
   }
   // Nouvelle grille (novembre 2026) pour la 1ère S2 et la Terminale S2 : Maths + PC 15 000, + SVT 20 000, chaque matière seule 10 000
   const GRILLE_2611 = { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ['Maths', 'PC'], prix: 15000 }, option: { SVT: 5000 } };
+  const GRILLE_S1 = { '1ère S1': { seules: { Maths: 12000, PC: 12000 }, pack: { matieres: ['Maths', 'PC'], prix: 20000 } },
+    'Terminale S1': { seules: { Maths: 15000, PC: 15000 }, pack: { matieres: ['Maths', 'PC'], prix: 30000 } } };
   async function migrateGrille() {
-    if (S.role !== 'admin' || S._grille || !S.settings || S.settings.grille202611) return;
+    if (S.role !== 'admin' || S._grille || !S.settings || (S.settings.grille202611 && S.settings.grille202611b)) return;
     S._grille = true;
     const st = clone(S.settings);
-    ['1ère S2', 'Terminale S2'].forEach(c => { if (st.tarifs[c]) st.tarifs[c] = clone(GRILLE_2611); });
-    st.grille202611 = true;
-    if (await mutate('saveSettings', { settings: st }, 'Nouvelle grille appliquée : 1ère S2 et Terminale S2')) renderAdmin();
+    if (!st.grille202611) ['1ère S2', 'Terminale S2'].forEach(c => { if (st.tarifs[c]) st.tarifs[c] = clone(GRILLE_2611); });
+    if (!st.grille202611b) Object.assign(st.tarifs, clone(GRILLE_S1));
+    st.grille202611 = true; st.grille202611b = true;
+    if (await mutate('saveSettings', { settings: st }, 'Nouvelle grille des tarifs appliquée')) renderAdmin();
   }
   // élèves dont la mensualité ne correspond plus à la grille (hors tarif « cours de vacances » et abandons)
   const horsGrille = () => S.students.filter(s => s.statut !== 'abandon' && s.vacances !== 'oui' && s.matieres.length && +s.tarif !== prix(s.classe, s.matieres, S.settings.tarifs));
