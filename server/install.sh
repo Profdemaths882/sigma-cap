@@ -10,7 +10,7 @@ case "$ID" in ubuntu|debian) ;; *) echo "Système $ID non prévu (Ubuntu ou Debi
 export DEBIAN_FRONTEND=noninteractive
 echo "==> Paquets de base"
 apt-get update -y -q
-apt-get install -y -q curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https cron
+apt-get install -y -q curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https cron iproute2
 
 echo "==> Node.js"
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 18 ]; then
@@ -37,6 +37,9 @@ window.SIGMA_CONFIG = { API_URL: "https://$DOMAIN/api", SITE_URL: "https://$DOMA
 EOF
 chmod 644 /var/lib/sigma-cap/www/config.js
 
+# port interne libre (un autre programme du serveur peut déjà utiliser 3010)
+PORT=$(sed -n 's/^Environment=SIGMA_PORT=//p' /etc/systemd/system/sigma-cap.service 2>/dev/null || true)
+if [ -z "$PORT" ]; then for p in $(seq 3010 3040); do if ! ss -ltn | grep -q ":$p "; then PORT=$p; break; fi; done; fi
 cat > /etc/systemd/system/sigma-cap.service <<EOF
 [Unit]
 Description=Sigma Cap
@@ -44,6 +47,7 @@ After=network.target
 [Service]
 User=sigma
 Environment=SIGMA_DATA=/var/lib/sigma-cap
+Environment=SIGMA_PORT=$PORT
 ExecStart=/usr/bin/node /opt/sigma-cap/server/server.js
 Restart=always
 RestartSec=3
@@ -53,7 +57,14 @@ EOF
 systemctl daemon-reload
 systemctl enable --now sigma-cap
 
-cat > /etc/caddy/Caddyfile <<EOF
+# Bloc Caddy séparé : on n'écrase JAMAIS le Caddyfile existant (d'autres sites peuvent y être)
+if [ ! -f /etc/caddy/Caddyfile ] && ss -ltn | grep -qE ':(80|443) '; then
+  echo "Un autre serveur web occupe les ports 80/443 et /etc/caddy/Caddyfile est absent : installation arrêtée."; exit 1
+fi
+mkdir -p /etc/caddy; touch /etc/caddy/Caddyfile
+BACKUP=/etc/caddy/Caddyfile.avant-sigma-$(date +%s)
+cp -a /etc/caddy/Caddyfile "$BACKUP"
+cat > /etc/caddy/sigma-cap.caddy <<EOF
 $DOMAIN {
 	encode gzip
 	@prive path /server/* /.git* /.github/*
@@ -61,7 +72,7 @@ $DOMAIN {
 		respond 404
 	}
 	handle /api* {
-		reverse_proxy 127.0.0.1:3010
+		reverse_proxy 127.0.0.1:$PORT
 	}
 	handle /files/docs/* {
 		root * /var/lib/sigma-cap
@@ -78,6 +89,11 @@ $DOMAIN {
 	}
 }
 EOF
+grep -q 'import /etc/caddy/sigma-cap.caddy' /etc/caddy/Caddyfile || printf '\nimport /etc/caddy/sigma-cap.caddy\n' >> /etc/caddy/Caddyfile
+if ! caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/tmp/sigma-caddy.log 2>&1; then
+  echo "Configuration Caddy refusée, je remets l'ancienne :"; cat /tmp/sigma-caddy.log
+  cp -a "$BACKUP" /etc/caddy/Caddyfile; exit 1
+fi
 systemctl reload caddy || systemctl restart caddy
 if command -v ufw >/dev/null && ufw status | grep -q active; then ufw allow 80/tcp; ufw allow 443/tcp; fi
 
