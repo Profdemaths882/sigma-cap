@@ -1276,7 +1276,26 @@
     const maxC = Math.max(1, ...byClass.map(x => Math.max(x[1], x[2])));
     const late = bal.filter(([, b]) => b.late.length || b.inscReste).sort((a, b) => b[1].late.length - a[1].late.length || b[1].reste - a[1].reste).slice(0, 8);
     const hasEx = S.students.some(s => s.exemple);
+    // Caisse en temps réel : tout l'argent validé depuis la rentrée, moins tout ce qui est sorti
+    const okPays = S.payments.filter(payOk), sortiesFrais = fin.depenses, sortiesProfs = fin.verse;
+    const caisse = fin.encaisse - sortiesFrais - sortiesProfs;
+    const parMode = ['Espèces', 'Wave', 'Orange Money'].map(md => [md, okPays.filter(p => p.mode === md).reduce((a, p) => a + p.montant, 0)]).filter(x => x[1]);
+    const autres = fin.encaisse - parMode.reduce((a, x) => a + x[1], 0);
+    const maj = S.updatedAt ? new Date(S.updatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
     return `${noteHTML(true)}
+      <div class="panel caisse"><div class="toolbar"><div class="grow"><p class="eyebrow">Argent disponible en caisse</p>
+          <div class="caisse-v ${caisse < 0 ? 'neg' : ''}">${fcfa(caisse)}<small> CFA</small></div>
+          <p class="small muted" style="margin:2px 0 0">En temps réel · mis à jour à ${esc(maj)} · paiements validés uniquement</p></div>
+          <button class="btn sm" data-act="refresh">Actualiser</button></div>
+        <div class="caisse-calc">
+          <div><span>Encaissé depuis la rentrée</span><b>+ ${fcfa(fin.encaisse)}</b><small>mensualités ${fcfa(fin.mensualites)} · inscriptions ${fcfa(fin.inscriptions)}</small></div>
+          <div><span>Dépenses (salle, photocopies…)</span><b>− ${fcfa(sortiesFrais)}</b></div>
+          <div><span>Déjà versé aux professeurs</span><b>− ${fcfa(sortiesProfs)}</b></div>
+          <div class="tot"><span>Reste en caisse</span><b>= ${fcfa(caisse)}</b></div>
+        </div>
+        ${parMode.length ? `<p class="small" style="margin:8px 0 0">Entrées par moyen de paiement : ${parMode.map(([md, v]) => `${esc(md)} <b>${fcfa(v)}</b>`).join(' · ')}${autres ? ` · autre <b>${fcfa(autres)}</b>` : ''}</p>` : ''}
+        ${toVal.length ? `<p class="small muted" style="margin:4px 0 0">Non compté : ${fcfa(toVal.reduce((a, p) => a + p.montant, 0))} déclarés par les élèves, en attente de votre validation.</p>` : ''}
+      </div>
       ${hasEx ? `<div class="warnbox">Les élèves marqués « exemple » servent à montrer l'application. Supprimez-les depuis l'onglet Élèves avant de démarrer.</div>` : ''}
       <div class="kpis">
         <div class="kpi"><span class="l">Élèves inscrits (payé)</span><span class="v">${act.length}</span><span class="s">${pend.length} sans paiement · ${codeWait.length} code non saisi</span></div>

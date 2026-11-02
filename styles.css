@@ -526,3 +526,12 @@ h4.grp { margin: 14px 0 8px; display: flex; gap: 8px; align-items: center; }
 .lr-sym .btn { min-width: 34px; padding: 4px 8px; }
 .lr-txt { width: 100%; box-sizing: border-box; font: 1rem/1.5 var(--body); padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); resize: vertical; }
 .price-note { grid-column: 1 / -1; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--warn-bg); color: var(--fg); }
+/* caisse en temps réel */
+.caisse { border: 2px solid var(--ok); }
+.caisse-v { font: 900 2.4rem/1.1 var(--display, inherit); color: var(--ok); }
+.caisse-v small { font-size: .9rem; font-weight: 600; color: var(--muted); }
+.caisse-v.neg { color: var(--bad); }
+.caisse-calc { display: grid; gap: 6px; margin-top: 10px; }
+.caisse-calc > div { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); }
+.caisse-calc small { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+.caisse-calc .tot { background: var(--ok-bg); font-weight: 700; }
