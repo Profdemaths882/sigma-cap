@@ -1300,7 +1300,8 @@
       <div class="kpis">
         <div class="kpi"><span class="l">Élèves inscrits (payé)</span><span class="v">${act.length}</span><span class="s">${pend.length} sans paiement · ${codeWait.length} code non saisi</span></div>
         <div class="kpi ${toVal.length ? 'alert' : ''}"><span class="l">Paiements à valider</span><span class="v">${toVal.length}</span><span class="s">${fcfa(toVal.reduce((a, p) => a + p.montant, 0))} déclarés par les élèves</span></div>
-        <div class="kpi"><span class="l">Total encaissé · ${monthLabel(m)}</span><span class="v">${fcfa(encMois)}</span><span class="s">mensualités ${fcfa(encMois - inscMois)} (sur ${fcfa(attendu)} attendus) + inscriptions ${fcfa(inscMois)}</span></div>
+        <div class="kpi"><span class="l">Total encaissé depuis le début</span><span class="v">${fcfa(fin.encaisse)}</span><span class="s">mensualités ${fcfa(fin.mensualites)} + inscriptions ${fcfa(fin.inscriptions)}</span></div>
+        <div class="kpi"><span class="l">Encaissé pour ${monthLabel(m)}</span><span class="v">${fcfa(encMois)}</span><span class="s">${paysMois.length ? paysMois.slice(0, 3).map(p => { const st = S.students.find(x => x.id === p.studentId); return esc(st ? fullName(st) : '?') + ' ' + fcfa(p.montant); }).join(' · ') + (paysMois.length > 3 ? ' …' : '') : 'aucun paiement pour ce mois'} · ${fcfa(attendu)} attendus</span></div>
         <div class="kpi ${impayes ? 'alert' : ''}"><span class="l">Impayés cumulés</span><span class="v">${fcfa(impayes)}</span><span class="s">${bal.filter(([, b]) => b.late.length).length} élève(s) en retard après le ${limitDay()}</span></div>
       </div>
       ${toVal.length ? `<div class="warnbox">${toVal.length} paiement${toVal.length > 1 ? 's' : ''} déclaré${toVal.length > 1 ? 's' : ''} par les élèves attend${toVal.length > 1 ? 'ent' : ''} votre validation. <button class="btn sm" data-act="tab" data-v="paiements">Valider</button></div>` : ''}
