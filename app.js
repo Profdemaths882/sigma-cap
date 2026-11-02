@@ -367,7 +367,7 @@
   }
 
   /* ---------- partage : inviter des élèves (places limitées) ---------- */
-  const shareLink = () => CFG.SITE_URL || 'https://profdemaths882.github.io/sigma-cap/';
+  const shareLink = () => CFG.SITE_URL || 'https://sigmacap.racineprofdemaths.com/';
   const shareMsg = () => { const r = nextSession(); return `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).${r ? `\n📅 Rendez-vous ${rdvTxt(r).toLowerCase()} au ${S.settings.lieu || 'CEM Kennedy'}.` : ''}\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`; };
   const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
 
@@ -526,7 +526,7 @@
           <p class="eyebrow">Partager Sigma Cap</p>
           <h2 style="margin-top:8px">Invite tes camarades : les places sont limitées</h2>
           <p>Envoie le lien à un camarade ou à un parent, ou montre-lui ce QR code : il ouvre directement cette page sur son téléphone.</p>
-          <p class="small muted num">profdemaths882.github.io/sigma-cap</p>
+          <p class="small muted num">sigmacap.racineprofdemaths.com</p>
           <div class="share-row">
             <a class="btn go" target="_blank" rel="noopener" href="${shareWa()}">Partager sur WhatsApp</a>
             <button type="button" class="btn" data-act="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> Autres partages</button>
