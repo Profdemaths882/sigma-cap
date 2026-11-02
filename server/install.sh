@@ -89,10 +89,22 @@ $DOMAIN {
 	}
 }
 EOF
-grep -q 'import /etc/caddy/sigma-cap.caddy' /etc/caddy/Caddyfile || printf '\nimport /etc/caddy/sigma-cap.caddy\n' >> /etc/caddy/Caddyfile
-if ! caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/tmp/sigma-caddy.log 2>&1; then
-  echo "Configuration Caddy refusée, je remets l'ancienne :"; cat /tmp/sigma-caddy.log
-  cp -a "$BACKUP" /etc/caddy/Caddyfile; exit 1
+# Un Caddyfile à un seul site peut être écrit sans accolades : on les ajoute pour pouvoir mettre un 2e site
+CF=/etc/caddy/Caddyfile
+grep -v 'import /etc/caddy/sigma-cap.caddy' "$BACKUP" > "$CF.tmp"
+node -e '
+const fs = require("fs"), f = process.argv[1]; let t = fs.readFileSync(f, "utf8");
+const L = t.split("\n"); let i = 0;
+const skip = () => { while (i < L.length && (/^\s*(#.*)?$/.test(L[i]))) i++; };
+skip();
+if (i < L.length && /^\s*\{\s*$/.test(L[i])) { let d = 0; for (; i < L.length; i++) { d += (L[i].match(/\{/g) || []).length - (L[i].match(/\}/g) || []).length; if (d === 0) { i++; break; } } skip(); }
+if (i < L.length && !/\{\s*$/.test(L[i]) && !/^\s*import\s/.test(L[i])) { L[i] = L[i].replace(/\s+$/, "") + " {"; L.push("}"); fs.writeFileSync(f, L.join("\n") + "\n"); console.log("   (accolades ajoutées autour du site existant)"); }
+' "$CF.tmp"
+printf '\nimport /etc/caddy/sigma-cap.caddy\n' >> "$CF.tmp"
+mv "$CF.tmp" "$CF"
+if ! caddy validate --config "$CF" --adapter caddyfile >/tmp/sigma-caddy.log 2>&1; then
+  echo "Configuration Caddy refusée, je remets l'ancienne. Envoyez ces lignes à l'assistant :"; tail -5 /tmp/sigma-caddy.log
+  cp -a "$BACKUP" "$CF"; exit 1
 fi
 systemctl reload caddy || systemctl restart caddy
 if command -v ufw >/dev/null && ufw status | grep -q active; then ufw allow 80/tcp; ufw allow 443/tcp; fi

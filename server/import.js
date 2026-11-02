@@ -10,12 +10,13 @@ const DB = path.join(DATA, 'db'), FILES = path.join(DATA, 'files');
 const gas = process.env.SIGMA_SOURCE || (fs.readFileSync(path.join(SITE, 'config.js'), 'utf8').match(/https:\/\/script\.google\.com\/macros\/s\/[^"']+\/exec/) || [])[0];
 if (!gas) { console.error("Adresse du serveur Google introuvable dans config.js."); process.exit(1); }
 
-function ask(q) {
-  return new Promise(ok => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: !!process.stdin.isTTY });
-    if (process.stdin.isTTY) rl._writeToOutput = s => { if (s.startsWith(q)) process.stdout.write(s); else process.stdout.write('*'); };
-    rl.question(q, a => { rl.close(); process.stdout.write('\n'); ok(a.trim()); });
-  });
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: !!process.stdin.isTTY });
+let hide = false; const lines = [], waiting = [];
+rl.on('line', l => { if (hide && process.stdin.isTTY) process.stdout.write('\n'); hide = false; waiting.length ? waiting.shift()(l.trim()) : lines.push(l.trim()); });
+if (process.stdin.isTTY) { const w = rl._writeToOutput.bind(rl); rl._writeToOutput = s => { if (hide && !/[\r\n]/.test(s)) process.stdout.write('*'); else if (!hide) w(s); }; }
+function ask(q, secret) {
+  process.stdout.write(q); hide = !!secret;
+  return new Promise(ok => lines.length ? (hide = false, ok(lines.shift())) : waiting.push(ok));
 }
 async function call(body) {
   const r = await fetch(gas, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' });
@@ -28,8 +29,11 @@ const EXT = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.pn
 
 (async () => {
   console.log('Déménagement de Sigma Cap depuis Google vers ce serveur.');
-  const code = await ask('Code secret du compte « admin » : ');
-  const { token } = await call({ action: 'login', login: 'admin', password: code });
+  const login = (await ask('Identifiant de gestionnaire (Entrée = admin) : ')) || 'admin';
+  const code = await ask('Mot de passe de ce compte : ', true);
+  rl.close();
+  const { token, data } = await call({ action: 'login', login, password: code });
+  if (!data || data.role !== 'admin') throw new Error("Ce compte n'est pas un compte gestionnaire.");
   console.log('Connexion à Google réussie. Lecture des données…');
   const ex = await call({ action: 'exportAll', token });
   let nf = 0;
@@ -64,8 +68,8 @@ const EXT = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.pn
   write('counter', +ex.counter || 0);
   const cf = path.join(DATA, 'config.json');
   let old = {}; try { old = JSON.parse(fs.readFileSync(cf, 'utf8')); } catch (e) { }
-  fs.writeFileSync(cf, JSON.stringify(Object.assign(old, { masterCode: code, evalKeys: ex.evalKeys || {}, importeLe: new Date().toISOString() }), null, 1), { mode: 0o600 });
+  fs.writeFileSync(cf, JSON.stringify(Object.assign(old, login.toLowerCase() === 'admin' ? { masterCode: code } : {}, { evalKeys: ex.evalKeys || {}, importeLe: new Date().toISOString() }), null, 1), { mode: 0o600 });
   console.log('Terminé : ' + (ex.students || []).length + ' élèves, ' + (ex.payments || []).length + ' paiements, ' + (ex.teachers || []).length + ' profs, '
     + (ex.docs || []).length + ' documents, ' + (ex.rendus || []).length + ' copies, ' + nf + ' fichiers copiés.');
-  console.log('Le code admin reste le même. Redémarrage du serveur : sudo systemctl restart sigma-cap');
+  console.log('Les identifiants et mots de passe restent les mêmes.');
 })().catch(e => { console.error('Échec : ' + e.message); process.exit(1); });
