@@ -367,7 +367,7 @@
   }
 
   /* ---------- partage : inviter des élèves (places limitées) ---------- */
-  const shareLink = () => 'https://profdemaths882.github.io/sigma-cap/';
+  const shareLink = () => CFG.SITE_URL || 'https://profdemaths882.github.io/sigma-cap/';
   const shareMsg = () => { const r = nextSession(); return `🎓 Sigma Cap — Vers la réussite\nCours de renforcement Maths · PC · SVT au ${S.settings.lieu || 'CEM Kennedy'} (2nde S à Terminale S).${r ? `\n📅 Rendez-vous ${rdvTxt(r).toLowerCase()} au ${S.settings.lieu || 'CEM Kennedy'}.` : ''}\n⚠️ Les places sont limitées : inscris-toi vite en ligne 👇\n${shareLink()}`; };
   const shareWa = () => 'https://wa.me/?text=' + encodeURIComponent(shareMsg());
 

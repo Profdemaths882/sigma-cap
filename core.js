@@ -584,6 +584,16 @@ var SigmaCore = (function () {
           if (!('debloques' in ns) && os.debloques) ns.debloques = os.debloques; // ne pas perdre les déblocages
           st.setSettings(ns); return { data: dataFor(sess) };
         }
+        case 'exportAll': {
+          // Déménagement vers un autre serveur : tout, y compris les mots de passe chiffrés (jamais lisibles en clair)
+          var ex = { settings: settings(), evalKeys: st.evalKeys || {}, counter: st.getCounter ? st.getCounter() : 0 };
+          ['students', 'payments', 'expenses', 'sessions', 'teachers', 'docs', 'rendus'].forEach(function (k) { try { ex[k] = st.read(k); } catch (e) { ex[k] = []; } });
+          return ex;
+        }
+        case 'exportFile': {
+          if (!st.readFile) throw new Error("Le serveur n'est pas à jour.");
+          return { data: st.readFile(String(req.id || '')) };
+        }
         case 'unlockEval': {
           var cs = settings() || {}, list = Array.isArray(cs.debloques) ? cs.debloques.slice() : [], eid = String(req.id || '').slice(0, 40);
           if (!eid) throw new Error('Évaluation inconnue.');
