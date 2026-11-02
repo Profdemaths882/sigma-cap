@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /server/
+Sitemap: https://sigmacap.racineprofdemaths.com/sitemap.xml
