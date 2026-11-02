@@ -54,6 +54,8 @@ var SigmaCore = (function () {
     while (y < by || (y === by && m <= bm)) { out.push(y + '-' + ('0' + m).slice(-2)); m++; if (m > 12) { m = 1; y++; } }
     return out;
   }
+  // Prix d'une matière ajoutée au pack (ex. SVT : 5 000 F en plus du pack Maths + PC), sinon son prix « seule »
+  function addPrice(t, m) { return t && t.option && t.option[m] != null && t.option[m] !== '' ? +t.option[m] : +((t && t.seules && t.seules[m]) || 0); }
   function prix(classe, mats, tarifs) {
     var t = tarifs && tarifs[classe]; mats = asList(mats);
     if (!t || !mats.length) return 0;
@@ -62,7 +64,7 @@ var SigmaCore = (function () {
     // Pack + matière en option (ex. 1ère S1/S2 : pack Maths + PC + SVT en option à 5 000 F) = prix du pack + prix de l'option
     var pk = t.pack && t.pack.matieres ? asList(t.pack.matieres) : [];
     if (pk.length && pk.every(function (m) { return mats.indexOf(m) >= 0; }))
-      return (+t.pack.prix || 0) + sum(mats.filter(function (m) { return pk.indexOf(m) < 0; }), function (m) { return t.seules[m]; });
+      return (+t.pack.prix || 0) + sum(mats.filter(function (m) { return pk.indexOf(m) < 0; }), function (m) { return addPrice(t, m); });
     return sum(mats, function (m) { return t.seules[m]; });
   }
   /* ---------- règle du premier mois (inscription en cours d'année) ----------
@@ -593,7 +595,7 @@ var SigmaCore = (function () {
     };
   }
 
-  return { make: make, planInscription: planInscription, dueFor: dueFor, nextMonth: nextMonth, prevMonth: prevMonth, vacPrix: vacPrix, onVacList: onVacList, pubSettings: pubSettings, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
+  return { addPrice: addPrice, make: make, planInscription: planInscription, dueFor: dueFor, nextMonth: nextMonth, prevMonth: prevMonth, vacPrix: vacPrix, onVacList: onVacList, pubSettings: pubSettings, prix: prix, finance: finance, financeByMonth: financeByMonth, alerts: alerts, sha256: sha256, monthsRange: monthsRange,
     isActive: isActive, payOk: payOk, partsOf: partsOf, MATIERES: MATIERES, CATS: CATS, mk: mk, asList: asList, digits: digits };
 })();
 if (typeof module !== 'undefined') module.exports = SigmaCore;

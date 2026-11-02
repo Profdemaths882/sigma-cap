@@ -18,9 +18,9 @@ window.SIGMA_DEFAULTS = {
     tarifs: {
       "2nde S":       { seules: { Maths: 10000, PC: 10000 },            pack: { matieres: ["Maths", "PC"], prix: 15000 } },
       "1ère S1":      { seules: { Maths: 12000, PC: 12000, SVT: 5000 },            pack: { matieres: ["Maths", "PC"], prix: 20000 } },
-      "1ère S2":      { seules: { Maths: 10000, PC: 10000, SVT: 5000 },            pack: { matieres: ["Maths", "PC"], prix: 18000 } },
+      "1ère S2":      { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ["Maths", "PC"], prix: 15000 }, option: { SVT: 5000 } },
       "Terminale S1": { seules: { Maths: 15000, PC: 15000 },            pack: { matieres: ["Maths", "PC"], prix: 30000 } },
-      "Terminale S2": { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ["Maths", "PC", "SVT"], prix: 25000 } }
+      "Terminale S2": { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ["Maths", "PC"], prix: 15000 }, option: { SVT: 5000 } }
     },
     seuils: { "2nde S": 6, "1ère S1": 6, "1ère S2": 6, "Terminale S1": 6, "Terminale S2": 6 },
     paiement: "Wave ou Orange Money au 78 12 89 833 (M. Thiam), ou en espèces auprès de M. Thiam ou de M. Faye.",

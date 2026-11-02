@@ -108,6 +108,7 @@
     if (!mats.length) return '—';
     const key = a => a.slice().sort().join('+');
     if (t && t.pack && key(t.pack.matieres) === key(mats)) return 'Pack ' + t.pack.matieres.join(' + ');
+    if (t && t.pack && t.pack.matieres.every(m => mats.includes(m))) return 'Pack ' + t.pack.matieres.join(' + ') + ' + ' + mats.filter(m => !t.pack.matieres.includes(m)).join(' + ');
     if (mats.length === 1) return mats[0] + ' seule';
     return mats.join(' + ') + ' (à la carte)';
   }
@@ -378,7 +379,7 @@
           ['Samedi', '16h30 – 18h30', 'SVT (option)', 'Professeur de SVT']] };
   const noteOn = () => today() <= NOTE.fin;
   const notePrix = () => NOTE.classes.map(c => { const t = S.settings.tarifs[c]; const p = t && t.pack ? +t.pack.prix || 0 : 0;
-    return { c, pack: p, svt: t && t.seules && t.seules.SVT != null ? +t.seules.SVT : NOTE.option }; });
+    return { c, pack: p, svt: t && t.seules && t.seules.SVT != null ? C.addPrice(t, 'SVT') : NOTE.option }; });
   const noteMsg = () => `📢 Sigma Cap — Note aux élèves et aux parents\n\nNouveau : la SVT en option pour la 1ère S1 et la 1ère S2.\n🚀 Début des cours de SVT : ${dayName(NOTE.debut).toLowerCase()} ${dateLabel(NOTE.debut)}.\n\n🗓️ Emploi du temps 1ère S1 et 1ère S2 :\n${NOTE.edt.map(r => `• ${r[0]} ${r[1]} : ${r[2]}`).join('\n')}\n\n💰 L'option SVT coûte ${fcfa(NOTE.option)} de plus par mois, et ${fcfa(NOTE.option)} de plus sur les frais d'inscription.\n${notePrix().filter(x => x.pack).map(x => `• ${x.c} : Maths + PC ${fcfa(x.pack)} → avec SVT ${fcfa(x.pack + x.svt)} / mois`).join('\n')}\n\n✅ Nouvel élève : coche SVT dans le formulaire d'inscription.\n✅ Déjà inscrit : préviens M. Thiam ou M. Faye pour ajouter la SVT.\n\nLes places sont limitées. Inscription et infos : ${shareLink()}`;
   function noteHTML(inSpace) {
     if (!noteOn()) return '';
@@ -545,17 +546,16 @@
 
   function priceCards(classe) {
     const t = S.settings.tarifs[classe]; if (!t) return '';
-    const cards = [];
+    const cards = [], pk = t.pack ? t.pack.matieres : [], names = ms => ms.map(m => MAT_LABEL[m] || m).join(' + ');
+    const extra = MATIERES.filter(m => t.seules[m] != null && pk.length && !pk.includes(m));
     if (t.pack) {
-      const sum = t.pack.matieres.reduce((s, m) => s + (+t.seules[m] || 0), 0);
-      const save = sum - t.pack.prix;
-      cards.push(`<div class="price best"><span class="pill ok tag">Pack · ${save > 0 ? fcfa(save) + ' économisés' : 'toutes les matières'}</span><h3>${t.pack.matieres.map(m => MAT_LABEL[m]).join(' + ')}</h3><div class="amt">${fcfa(t.pack.prix)}<small>CFA / mois</small></div></div>`);
+      const sum = pk.reduce((s, m) => s + (+t.seules[m] || 0), 0), save = sum - t.pack.prix;
+      cards.push(`<div class="price best"><span class="pill ok tag">Pack${save > 0 ? ' · ' + fcfa(save) + ' économisés' : ''}</span><h3>${names(pk)}</h3><div class="amt">${fcfa(t.pack.prix)}<small>CFA / mois</small></div></div>`);
+      extra.forEach(m => { const tot = C.prix(classe, pk.concat([m]), S.settings.tarifs);
+        cards.push(`<div class="price best"><span class="pill ${m} tag">Pack + ${m}</span><h3>${names(pk.concat([m]))}</h3><div class="amt">${fcfa(tot)}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">${m} en plus du pack : + ${fcfa(tot - t.pack.prix)} seulement.</p></div>`); });
     }
-    const pk = t.pack ? t.pack.matieres : [];
-    MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(pk.length && !pk.includes(m)
-      ? `<div class="price"><span class="pill ${m} tag">Option ${m}</span><h3>${MAT_LABEL[m]} au choix</h3><div class="amt">+ ${fcfa(t.seules[m])}<small>CFA / mois</small></div><p class="small muted" style="margin:6px 0 0">S'ajoute à la mensualité et aux frais d'inscription.</p></div>`
-      : `<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
-    return cards.join('');
+    MATIERES.filter(m => t.seules[m] != null).forEach(m => cards.push(`<div class="price"><span class="pill ${m} tag">${m}</span><h3>${MAT_LABEL[m]} seule</h3><div class="amt">${fcfa(t.seules[m])}<small>CFA / mois</small></div></div>`));
+    return cards.join('') + `<p class="small muted price-note">Frais d'inscription : le montant d'une mensualité, payés une seule fois à l'inscription.${['1ère S2', 'Terminale S2'].includes(classe) ? ' <a href="img/flyer/tarifs-1ereS2-TS2.png" download="Sigma-Cap-Tarifs-1ereS2-TerminaleS2.png">Télécharger le flyer des tarifs</a>' : ''}</p>`;
   }
 
   function weekHTML(sessions, editable, highlight) {
@@ -1230,7 +1230,20 @@
       <main class="wrap admin-main" id="pane"></main>
     </div>`;
     renderPane();
+    migrateGrille();
   }
+  // Nouvelle grille (novembre 2026) pour la 1ère S2 et la Terminale S2 : Maths + PC 15 000, + SVT 20 000, chaque matière seule 10 000
+  const GRILLE_2611 = { seules: { Maths: 10000, PC: 10000, SVT: 10000 }, pack: { matieres: ['Maths', 'PC'], prix: 15000 }, option: { SVT: 5000 } };
+  async function migrateGrille() {
+    if (S.role !== 'admin' || S._grille || !S.settings || S.settings.grille202611) return;
+    S._grille = true;
+    const st = clone(S.settings);
+    ['1ère S2', 'Terminale S2'].forEach(c => { if (st.tarifs[c]) st.tarifs[c] = clone(GRILLE_2611); });
+    st.grille202611 = true;
+    if (await mutate('saveSettings', { settings: st }, 'Nouvelle grille appliquée : 1ère S2 et Terminale S2')) renderAdmin();
+  }
+  // élèves dont la mensualité ne correspond plus à la grille (hors tarif « cours de vacances » et abandons)
+  const horsGrille = () => S.students.filter(s => s.statut !== 'abandon' && s.vacances !== 'oui' && s.matieres.length && +s.tarif !== prix(s.classe, s.matieres, S.settings.tarifs));
   function renderPane() {
     const p = $('#pane'); if (!p) return;
     const fn = { dash: paneDash, eleves: paneEleves, suivi: () => suiviPane(S.students.filter(s => s.statut !== 'abandon'), s => asList(s.matieres)), docs: docsPane, enligne: paneEnLigne, paiements: panePaiements, depenses: paneDepenses, repartition: paneRepartition, edt: paneEdt, profs: paneProfs, params: paneParams }[S.tab];
@@ -1650,17 +1663,23 @@
           ${st.contacts.map((c, i) => `<label class="f">Contact ${i + 1}<input id="g-cn${i}" value="${esc(c.nom)}"></label><label class="f">Téléphone ${i + 1}<input id="g-ct${i}" value="${esc(c.tel)}"></label>`).join('')}
         </div>
         <h3 style="margin-top:8px">Tarifs (FCFA / mois) et seuils</h3>
-        <div class="tbl-wrap"><table><thead><tr><th>Classe</th><th class="n">Maths</th><th class="n">PC</th><th class="n">SVT</th><th class="n">Prix du pack</th><th>Matières du pack</th><th class="n">Seuil élèves</th></tr></thead><tbody>
+        <div class="tbl-wrap"><table><thead><tr><th>Classe</th><th class="n">Maths</th><th class="n">PC</th><th class="n">SVT</th><th class="n">Prix du pack</th><th>Matières du pack</th><th class="n">SVT en plus du pack</th><th class="n">Seuil élèves</th></tr></thead><tbody>
           ${st.classes.map((c, i) => { const t = st.tarifs[c]; return `<tr><td><b>${esc(c)}</b></td>${MATIERES.map(m => `<td class="n"><input style="width:96px;text-align:right" type="number" step="500" min="0" id="tf-${i}-${m}" value="${t.seules[m] != null ? t.seules[m] : ''}" placeholder="—"></td>`).join('')}
             <td class="n"><input style="width:104px;text-align:right" type="number" step="500" min="0" id="tp-${i}" value="${t.pack ? t.pack.prix : ''}"></td>
             <td class="small">${t.pack ? t.pack.matieres.join(' + ') : '—'}</td>
+            <td class="n">${t.pack && !t.pack.matieres.includes('SVT') ? `<input style="width:96px;text-align:right" type="number" step="500" min="0" id="to-${i}" value="${t.option && t.option.SVT != null ? t.option.SVT : ''}" placeholder="= SVT seule">` : '—'}</td>
             <td class="n"><input style="width:72px;text-align:right" type="number" min="1" step="1" id="ts-${i}" value="${(st.seuils || {})[c] || 6}"></td></tr>`; }).join('')}
         </tbody></table></div>
-        <p class="muted small">Seuil élèves : au-delà, l'appli propose de trouver un nouveau prof ou d'ouvrir un 2e groupe. Une case de tarif vide = matière non proposée. Les nouveaux tarifs valent pour les nouvelles inscriptions.</p>
+        <p class="muted small">Seuil élèves : au-delà, l'appli propose de trouver un nouveau prof ou d'ouvrir un 2e groupe. Une case de tarif vide = matière non proposée. Les nouveaux tarifs valent pour les nouvelles inscriptions ; pour les élèves déjà inscrits, utilisez le cadre « Mensualités des élèves déjà inscrits » ci-dessous.</p>
         <label class="f">Comment payer (affiché aux élèves)<textarea id="g-pay" rows="2">${esc(st.paiement)}</textarea></label>
         <label class="f">Message de relance WhatsApp <span class="h">{eleve}, {classe}, {mois} et {reste} sont remplacés automatiquement</span><textarea id="g-rel" rows="3">${esc(st.relance)}</textarea></label>
         <div><button class="btn primary" type="submit">Enregistrer les paramètres</button></div>
       </form>
+      ${(() => { const hg = horsGrille(); return `<div class="panel" id="recalc"><h3>Mensualités des élèves déjà inscrits</h3>
+        ${hg.length ? `<p class="small muted">Ces élèves ont une mensualité différente de la grille actuelle. Cochez ceux à mettre à jour (les frais d'inscription suivent la mensualité). Les élèves au tarif « cours de vacances » ne sont pas concernés.</p>
+        <div class="tbl-wrap"><table><thead><tr><th></th><th>Élève</th><th>Formule</th><th class="n">Actuelle</th><th class="n">Grille</th></tr></thead><tbody>${hg.map(s => `<tr><td><input type="checkbox" class="rc" value="${esc(s.id)}" checked aria-label="Mettre à jour ${esc(fullName(s))}"></td><td>${esc(fullName(s))}<span class="sub">${esc(s.classe)}</span></td><td class="small">${esc(formule(s.classe, s.matieres, S.settings.tarifs))}</td><td class="n">${fcfa(s.tarif)}</td><td class="n"><b>${fcfa(prix(s.classe, s.matieres, S.settings.tarifs))}</b></td></tr>`).join('')}</tbody></table></div>
+        <div class="toolbar" style="margin-top:8px"><button class="btn primary" data-act="recalc">Appliquer la grille aux élèves cochés</button></div>`
+        : '<p class="muted small">Toutes les mensualités correspondent à la grille actuelle.</p>'}</div>`; })()}
       <div class="panel"><h3>Exports</h3><div class="toolbar"><button class="btn" data-act="csv-students">Liste des élèves (CSV)</button><button class="btn" data-act="csv-payments">Paiements (CSV)</button></div>
         ${LIVE ? '<p class="muted small">Toutes les données sont aussi visibles directement dans le Google Sheet.</p>' : `<p class="muted small">Mode démo : rien n'est envoyé en ligne.</p><div><button class="btn danger" data-act="reset-demo">Réinitialiser la démo</button></div>`}
       </div>`;
@@ -1677,6 +1696,7 @@
         MATIERES.forEach(m => { const x = $('#tf-' + i + '-' + m).value; if (x !== '') seules[m] = +x; });
         t.seules = seules; const pp = $('#tp-' + i).value;
         t.pack = pp === '' ? null : { matieres: (t.pack && t.pack.matieres.length ? t.pack.matieres : Object.keys(seules)).filter(m => seules[m] != null), prix: +pp };
+        const oi = $('#to-' + i); if (oi) { if (oi.value === '') { if (t.option) delete t.option.SVT; } else t.option = Object.assign({}, t.option, { SVT: +oi.value }); }
         st.seuils[c] = Math.max(1, +$('#ts-' + i).value || 6);
       });
       if (await mutate('saveSettings', { settings: st }, 'Paramètres enregistrés')) renderPane();
@@ -1805,6 +1825,13 @@
       case 'close': closeModal(); break;
       case 'declare': declareModal(); break;
       case 'add-doc': addDocModal(); break;
+      case 'recalc': {
+        const ids = $$('#recalc .rc:checked').map(i => i.value); if (!ids.length) { toast('Cochez au moins un élève'); break; }
+        el.disabled = true; let n = 0;
+        for (const id2 of ids) { const s = S.students.find(x => x.id === id2); if (!s) continue;
+          if (await mutate('save', { kind: 'students', item: { id: s.id, tarif: prix(s.classe, s.matieres, S.settings.tarifs) } })) n++; }
+        toast(n + ' mensualité' + (n > 1 ? 's' : '') + ' mise' + (n > 1 ? 's' : '') + ' à jour'); renderAdmin(); break;
+      }
       case 'rendre': rendreModal(id); break;
       case 'voir-rendu': case 'corriger': renduModal(id, 0); break;
       case 'copies': copiesModal(id); break;
